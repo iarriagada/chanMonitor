@@ -71,7 +71,14 @@ def rmsChan(dataSet):
             s = i - 1
     return list(zip(time,dataRMS))
 
-def plotConfig(ax_lst, time):
+def diffData(dataA):
+    diffPV = [y - x \
+               for x,y in np.array([dataA[1][:-1],
+                                    dataA[1][1:]]).T]
+    diffA = [dataA[0][1:], diffPV]
+    return diffA
+
+def plotConfig(ax_lst):
     '''
     This function is used to:
         - Disable tick labels for plots other than the bottom positions
@@ -233,38 +240,81 @@ if __name__ == '__main__':
 
     posFile = h5py.File(args.hdf5File, 'r')
     recGroups = [[posFile.get(recname),recname] for recname in posFile]
-    # recData = {name:[(list(np.array(g.get('timestamp')))),list(np.array(g.get('value')))] for g,name in recGroups}
-    recData = {name:[np.array(g.get('timestamp')),np.array(g.get('value'))] for g,name in recGroups}
+    recData = {name:[np.array(g.get('timestamp')),np.array(g.get('value'))]\
+               for g,name in recGroups}
     for n in recData:
         recTime = [datetime.fromtimestamp(ts) for ts in recData[n][0]]
-        timeStampS = [datetime.strftime(rt, '%m/%d/%Y %H:%M:%S.%f') for rt in recTime]
-        timeStamp = [datetime.strptime(ts, '%m/%d/%Y %H:%M:%S.%f') for ts in timeStampS]
+        timeStampS = [datetime.strftime(rt, '%m/%d/%Y %H:%M:%S.%f')\
+                      for rt in recTime]
+        timeStamp = [datetime.strptime(ts, '%m/%d/%Y %H:%M:%S.%f')\
+                     for ts in timeStampS]
         recData[n][0] = timeStamp
+
+    azdP = diffData(recData['mc:azCurrentPos'])
+    azdD = diffData(recData['tcs:demandAz'])
+    eldP = diffData(recData['mc:elCurrentPos'])
+    eldD = diffData(recData['tcs:demandEl'])
 
     ylims = (-1, 7)
     ylimsOFF = (-1, 2)
     ax_lst = list()
-    AxPlt.plotArea = (5,2)
+    AxPlt.plotArea = (6,2)
     AxPlt.gs = gridspec.GridSpec(AxPlt.plotArea[0], AxPlt.plotArea[1])
-    print('size az dmd array: ', len(recData['tcs:demandAz'][1]), ' size az pos array ', len(recData['mc:azCurrentPos'][1]))
+    print('size az dmd array: ', len(recData['tcs:demandAz'][1]),
+          ' size az pos array ', len(recData['mc:azCurrentPos'][1]))
 
     azPlot = AxPlt('b-', "MCS Azimuth Position & Demand\n[deg]", False)
+    azDPlot = AxPlt('b-', "MCS Azimuth Position Differential\n[deg]", False)
     # azDmd = AxPlt('b.', "MCS Azimuth Demand\n[ms]", ylims, False)
     elPlot = AxPlt('g-', "MCS Elevation Position & Demand\n[deg]", False)
+    elDPlot = AxPlt('g-', "MCS Elevation Position Differential\n[deg]", False)
     # elDmd = AxPlt('b', "MCS Elevation Demand\n[ms]", ylims, False)
-    offsPlot = AxPlt('c-', "Azimuth offset\n[s]", False)
+    offsPlot = AxPlt('c', "PQ offset\n[s]", False)
+    offsPlot2 = AxPlt('c', "PQ offset\n[s]", False)
     inposPlot = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    inposPlot2 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
 
-    azPlot.plot_ax(ax_lst, (0,0), 3, 2, np.array(recData['mc:azCurrentPos']).T, plotLabel='Az Pos')
-    azPlot.add_plot(ax_lst, np.array(recData['tcs:demandAz']).T, ls='r-', plotLabel='Az Dmd', alphaT=0.40)
+    azPlot.plot_ax(ax_lst, (0,0), 2, 1, np.array(recData['mc:azCurrentPos']).T,
+                   plotLabel='Az Pos')
+    azPlot.add_plot(ax_lst, np.array(recData['tcs:demandAz']).T, ls='r-',
+                    plotLabel='Az Dmd', alphaT=0.40)
+    azDPlot.plot_ax(ax_lst, (2,0), 2, 1, np.array(azdP).T,
+                   plotLabel='Az Pos')
+    azDPlot.add_plot(ax_lst, np.array(azdD).T, ls='r-',
+                    plotLabel='Az Dmd', alphaT=0.40)
+    elPlot.plot_ax(ax_lst, (0,1), 2, 1, np.array(recData['mc:elCurrentPos']).T,
+                   plotLabel='El Pos')
+    elPlot.add_plot(ax_lst, np.array(recData['tcs:demandEl']).T, ls='r-',
+                    plotLabel='El Dmd', alphaT=0.40)
+    elDPlot.plot_ax(ax_lst, (2,1), 2, 1, np.array(eldP).T,
+                   plotLabel='El Pos')
+    elDPlot.add_plot(ax_lst, np.array(eldD).T, ls='r-',
+                    plotLabel='El Dmd', alphaT=0.40)
     # tdLA1.add_plot(ax_lst, diffMCS, ls='g.', plotLabel='MCS-LA1', alphaT=0.30)
     # tdLA1.add_plot(ax_lst, diffSCS, ls='y.', plotLabel='SCS-LA1', alphaT=0.20)
     # tdLA1.add_plot(ax_lst, diffCRCS, ls='c.', plotLabel='CRCS-LA1', alphaT=0.10)
 
-    offsPlot.plot_ax(ax_lst, (3,0), 1, 2, np.array(recData['tcs:offsetPoA1.VALA']).T, plotLabel='Az Pos')
-    offsPlot.add_plot(ax_lst, np.array(recData['tcs:offsetPoA1.VALB']).T, ls='r-', plotLabel='El Dmd',alphaT=0.40)
+    offsPlot.plot_ax(ax_lst, (4,0), 1, 1,
+                     np.array(recData['tcs:offsetPoA1.VALA']).T,
+                     plotLabel='P Offset', ds='steps-post')
+    offsPlot.add_plot(ax_lst,
+                      np.array(recData['tcs:offsetPoA1.VALB']).T,
+                      ls='r', plotLabel='Q Offset',alphaT=0.40, ds='steps-post')
+    offsPlot2.plot_ax(ax_lst, (4,1), 1, 1,
+                     np.array(recData['tcs:offsetPoA1.VALA']).T,
+                     plotLabel='P Offset', ds='steps-post')
+    offsPlot2.add_plot(ax_lst,
+                      np.array(recData['tcs:offsetPoA1.VALB']).T,
+                      ls='r', plotLabel='Q Offset',alphaT=0.40, ds='steps-post')
 
-    inposPlot.plot_ax(ax_lst, (4,0), 1, 2, np.array(recData['mc:inPosition']).T, plotLabel='El Pos', ds='steps-post')
+    inposPlot.plot_ax(ax_lst, (5,0), 1, 1,
+                      np.array(recData['mc:inPosition']).T,
+                      bottomPlot=True,
+                      plotLabel='InPos', ds='steps-post')
+    inposPlot2.plot_ax(ax_lst, (5,1), 1, 1,
+                      np.array(recData['mc:inPosition']).T,
+                      bottomPlot=True,
+                      plotLabel='InPos', ds='steps-post')
     # elPlot.plot_ax(ax_lst, (2,0), 2, 2, np.array(recData['mc:elCurrentPos']).T, plotLabel='El Pos')
     # elPlot.add_plot(ax_lst, np.array(recData['tcs:demandEl']).T, ls='r-', plotLabel='El Dmd',alphaT=0.40)
     # tdTC1.plot_ax(ax_lst, (2,0), 1, 2, diffTC1, plotLabel='TC1-LA1')
@@ -276,7 +326,7 @@ if __name__ == '__main__':
     # rmsTDLA1.add_plot(ax_lst, rmsSCS, ls='y', bottomPlot=True, ds='steps-post', alphaT=0.50)
     # rmsTDLA1.add_plot(ax_lst, rmsCRCS, ls='c', bottomPlot=True, ds='steps-post', alphaT=0.30)
 
-    # plotConfig(ax_lst, diffTC1[0])
+    plotConfig(ax_lst)
 
     plt.suptitle('Time synchronization performance of Gemini Subsystems')
 
