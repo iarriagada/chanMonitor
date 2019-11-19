@@ -61,6 +61,7 @@ def monChan(chanNames):
     # Initialize empty arrays
     chanList = []
     cnameList = []
+    chanString = []
     # Go through EPICS channel names in array and initializes PV object
     for cn in chanNames:
         chan = epics.PV(cn)
@@ -73,8 +74,14 @@ def monChan(chanNames):
             chanList.append(chan)
         else:
             print("{0} not connected".format(cn))
+    for ch in chanList:
+        if re.search('string', ch.info):
+            chanString.append(1)
+        else:
+            chanString.append(0)
+
     # Return array with PV object and channel names
-    return [chanList, cnameList]
+    return [chanList, cnameList, chanString]
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments
@@ -89,27 +96,32 @@ if __name__ == '__main__':
         recList = f.read().splitlines()
     recInfo = monChan(recList)
     # Create Dictionary for each EPICS Record data
-    recDic = {name:[[],[],chan] for chan,name in np.array(recInfo).T}
+    recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True
+    loopcnt = 0
     while ((currTime - startTime) < dataCapDur):
         startWhile = datetime.now()
         for name in recInfo[1]:
-            if firstPass:
+            # if firstPass:
+            if (recDic[name][3]):
+                recDic[name][1] = np.append(recDic[name][1],
+                                            np.array(recDic[name][2].value,
+                                                     dtype='S10'))
+            else:
                 recDic[name][1].append(recDic[name][2].value)
-                recDic[name][0].append(recDic[name][2].timestamp)
-                # print('First pass for {}'.format(name))
-                continue
-            if not(float(recDic[name][2].timestamp) == float(recDic[name][0][-1])):
-                recDic[name][1].append(recDic[name][2].value)
-                recDic[name][0].append(recDic[name][2].timestamp)
+                # continue
+            # if not(float(recDic[name][2].timestamp) == float(recDic[name][0][-1])):
+                # recDic[name][1].append(recDic[name][2].value)
+                # recDic[name][0].append(recDic[name][2].timestamp)
             # else:
                 # print('Identical Timestamps for {2}: {0} = {1}'.format(recDic[name][2].timestamp, recDic[name][0][-1], name))
+        loopcnt += 1
         currTime = datetime.now()
         loopTime = (currTime - startWhile).total_seconds()
         waitTime = 0.1 - loopTime
         firstPass = False
         if loopTime > 0.1:
-            print("Loop took too long: {0} [s]".format(loopTime))
+            print("Loop {1} took too long: {0} [s]".format(loopTime, loopcnt))
             continue
         time.sleep(waitTime)
     # Create and initialize .h5 file

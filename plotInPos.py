@@ -12,6 +12,7 @@ import pickle
 import argparse
 import numpy as np
 import h5py
+import re
 
 PLOT_AREA = (2,2)
 
@@ -72,11 +73,48 @@ def rmsChan(dataSet):
     return list(zip(time,dataRMS))
 
 def diffData(dataA):
+    '''
+    This function is used to calculate the differential of the values of an
+    array between consecutive samples
+    '''
     diffPV = [y - x \
                for x,y in np.array([dataA[1][:-1],
                                     dataA[1][1:]]).T]
     diffA = [dataA[0][1:], diffPV]
     return diffA
+
+def inPosDur(ipArray):
+    inPos = False
+    ipd = list()
+    previpt = ipArray[0][0]
+    for t,ip in np.array(ipArray).T:
+        if not(ip) and inPos:
+            inPos = False
+            ipd.append([t, (t - previpt).total_seconds()])
+        if ip and not(inPos):
+            inPos = True
+            previpt = t
+    return ipd
+
+def offsetZones(offsetArray, zcolor):
+    zeroFlag = False
+    offsetPA = []
+    offsetNA = []
+    for t,ov in np.array(offsetArray).T:
+        if not(ov) and zeroFlag:
+            zeroFlag = False
+            offsetPA.append(t)
+        if ov and not(zeroFlag):
+            zeroFlag = True
+            offsetNA.append(t)
+    # offsZones = [[row[i] for row in [offsetPA,offsetNA]]
+                 # for i in range(len(offsetPA))]
+    if len(offsetNA) > len(offsetPA):
+        offsetNA = offsetNA[:-1]
+    zonecolor = [zcolor for i in range(len(offsetPA))]
+    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
+    offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
+    return offsetZonesArray
 
 def plotConfig(ax_lst):
     '''
@@ -150,9 +188,9 @@ class AxPlt:
         self.dataY = None
         self.alpha = 1.0
 
-    def plot_ax(self, ax_lst, position, height, width, data,
+    def plot_ax(self, ax_lst, position, height, width, data, offZone = [],
                 bottomPlot=False, errorLine=False, zonesPlot=True,
-                ds=None, plotLabel=None, alphaT=1.0):
+                ds=None, plotLabel=None, alphaT=1.0, stemp = False):
         '''
         Plot data in corresponding axes
         '''
@@ -187,12 +225,16 @@ class AxPlt:
             self.ax.plot(self.dataT, self.dataY, c=self.linestyle,
                          drawstyle=self.drawstyle, label=self.label, alpha=self.alpha)
 
-
         if errorLine:
             self.ax.axhline(y=1.0, linestyle='-.', linewidth=1.25, color='crimson')
             self.ax.axhline(y=0.5, linestyle='-.', linewidth=1.25, color='darkorange')
             self.ax.axhline(y=-1.0, linestyle='-.', linewidth=1.25, color='crimson')
             self.ax.axhline(y=-0.5, linestyle='-.', linewidth=1.25, color='darkorange')
+
+        if len(offZone):
+            for oz in offZone:
+                self.ax.axvspan(oz[0], oz[1], facecolor=oz[2], alpha=0.4)
+
         self.ax.grid(True)
         self.ax.tick_params("y", colors="b")
         self.ax.set_ylabel(self.ylabel, color="b")
@@ -237,11 +279,38 @@ class AxPlt:
 
 if __name__ == '__main__':
     args = parse_args()
+    # Read TCS in position from camonitor txt file
+    with open('testinpos.txt', 'r') as f:
+        tcsIPD = f.read().splitlines()
 
+    # Create empty arrays for TCS in position time stamp and value
+    dataT = list()
+    dataV = list()
+    for l in tcsIPD:
+        # Search for tcs:inPosition record
+        if re.search('inPosition', l):
+            # Append time stamp of inPosition instance
+            dataT.append(re.search('2019-10-07 [012][0-9]:[0-9]{2}:[0-9]{2}.[0-9]+', l).group(0))
+            # Append 1 if value is TRUE string and 0 if FALSE
+            if re.search('TRUE', l):
+                dataV.append(1)
+            elif re.search('FALSE', l):
+                dataV.append(0)
+    # Format time stamp to datetime object
+    dtT = [datetime.strptime(t, '%Y-%m-%d %H:%M:%S.%f') for t in dataT]
+    # Create final array
+    tcsipData = [dtT,dataV]
+
+    # Read h5 file
     posFile = h5py.File(args.hdf5File, 'r')
+    # Extract record names and create an array with group object and name of
+    # group
     recGroups = [[posFile.get(recname),recname] for recname in posFile]
+    print(np.array(recGroups).T[1])
+    # Create dictionary with time and process value data
     recData = {name:[np.array(g.get('timestamp')),np.array(g.get('value'))]\
                for g,name in recGroups}
+    # Reformat timestamp data
     for n in recData:
         recTime = [datetime.fromtimestamp(ts) for ts in recData[n][0]]
         timeStampS = [datetime.strftime(rt, '%m/%d/%Y %H:%M:%S.%f')\
@@ -252,79 +321,112 @@ if __name__ == '__main__':
 
     azdP = diffData(recData['mc:azCurrentPos'])
     azdD = diffData(recData['tcs:demandAz'])
+    # azdP = diffData(recData['tcs:currentRma'])
+    # azdD = diffData(recData['tcs:demandRma'])
     eldP = diffData(recData['mc:elCurrentPos'])
     eldD = diffData(recData['tcs:demandEl'])
 
-    ylims = (-1, 7)
+    inFalsePos = inPosDur(tcsipData)
+    ifpMCS = inPosDur(recData['mc:inPosition'])
+    ifpCRCS = inPosDur(recData['cr:inPosition'])
+    ifpP1 = inPosDur(recData['pwfs1:inPosition'])
+    ifpP2 = inPosDur(recData['pwfs2:inPosition'])
+    ifpAG = inPosDur(recData['ag:inPosition'])
+    ifpAGOI = inPosDur(recData['ag:oi:inPosition'])
+    offPZones = offsetZones(recData['tcs:offsetPoA1.VALA'], 'r')
+    offTotalZones = offPZones
+
+    print('Size of InPos False Flag duration array: ', len(inFalsePos))
+
+    ylims = (-0.01, 0.04)
+    # ylimsIP = (0.45, 0.55)
+    ylimsIP = (0.0, 5.55)
     ylimsOFF = (-1, 2)
     ax_lst = list()
-    AxPlt.plotArea = (6,2)
+    AxPlt.plotArea = (7,2)
     AxPlt.gs = gridspec.GridSpec(AxPlt.plotArea[0], AxPlt.plotArea[1])
     print('size az dmd array: ', len(recData['tcs:demandAz'][1]),
           ' size az pos array ', len(recData['mc:azCurrentPos'][1]))
 
-    azPlot = AxPlt('b-', "MCS Azimuth Position & Demand\n[deg]", False)
-    azDPlot = AxPlt('b-', "MCS Azimuth Position Differential\n[deg]", False)
-    # azDmd = AxPlt('b.', "MCS Azimuth Demand\n[ms]", ylims, False)
-    elPlot = AxPlt('g-', "MCS Elevation Position & Demand\n[deg]", False)
-    elDPlot = AxPlt('g-', "MCS Elevation Position Differential\n[deg]", False)
-    # elDmd = AxPlt('b', "MCS Elevation Demand\n[ms]", ylims, False)
-    offsPlot = AxPlt('c', "PQ offset\n[s]", False)
-    offsPlot2 = AxPlt('c', "PQ offset\n[s]", False)
-    inposPlot = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
-    inposPlot2 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    plot10 = AxPlt('r*', "TCS In Position Duration\n[sec]", ylimsIP, False)
+    plot11 = AxPlt('k', "TCS In Position\n[bool]", ylimsOFF, False)
+    plot12 = AxPlt('k', "CRCS In Position\n[bool]", ylimsOFF, False)
+    plot13 = AxPlt('k', "MCS In Position\n[bool]", ylimsOFF, False)
+    plot14 = AxPlt('k', "P1 In Position\n[bool]", ylimsOFF, False)
+    plot15 = AxPlt('k', "P2 In Position\n[bool]", ylimsOFF, False)
+    # plot16 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    # plot17 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    # plot18 = AxPlt('r*', "In Position Flag Duration\n[s]", ylimsIP, False)
+    # plot19 = AxPlt('r*', "In Position Flag Duration\n[s]", ylimsIP, False)
 
-    azPlot.plot_ax(ax_lst, (0,0), 2, 1, np.array(recData['mc:azCurrentPos']).T,
-                   plotLabel='Az Pos')
-    azPlot.add_plot(ax_lst, np.array(recData['tcs:demandAz']).T, ls='r-',
-                    plotLabel='Az Dmd', alphaT=0.40)
-    azDPlot.plot_ax(ax_lst, (2,0), 2, 1, np.array(azdP).T,
-                   plotLabel='Az Pos')
-    azDPlot.add_plot(ax_lst, np.array(azdD).T, ls='r-',
-                    plotLabel='Az Dmd', alphaT=0.40)
-    elPlot.plot_ax(ax_lst, (0,1), 2, 1, np.array(recData['mc:elCurrentPos']).T,
-                   plotLabel='El Pos')
-    elPlot.add_plot(ax_lst, np.array(recData['tcs:demandEl']).T, ls='r-',
-                    plotLabel='El Dmd', alphaT=0.40)
-    elDPlot.plot_ax(ax_lst, (2,1), 2, 1, np.array(eldP).T,
-                   plotLabel='El Pos')
-    elDPlot.add_plot(ax_lst, np.array(eldD).T, ls='r-',
-                    plotLabel='El Dmd', alphaT=0.40)
-    # tdLA1.add_plot(ax_lst, diffMCS, ls='g.', plotLabel='MCS-LA1', alphaT=0.30)
-    # tdLA1.add_plot(ax_lst, diffSCS, ls='y.', plotLabel='SCS-LA1', alphaT=0.20)
-    # tdLA1.add_plot(ax_lst, diffCRCS, ls='c.', plotLabel='CRCS-LA1', alphaT=0.10)
+    # plot20 = AxPlt('b-', "MCS Azimuth Position & Demand\n[deg]", False)
+    plot20 = AxPlt('b-', "MCS Azimuth Position & Demand Differential\n[deg]", ylims, False)
+    # plot22 = AxPlt('g-', "MCS Elevation Position & Demand\n[deg]", False)
+    plot21 = AxPlt('g-', "MCS Elevation Position & Demand Differential\n[deg]", ylims, False)
+    plot22 = AxPlt('k', "TCS In Position\n[bool]", ylimsOFF, False)
+    # plot24 = AxPlt('c', "PQ offset\n[s]", False)
+    # plot25 = AxPlt('c', "PQ offset\n[s]", False)
+    # plot26 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    # plot27 = AxPlt('k', "MCS in position\n[s]", ylimsOFF, False)
+    # plot28 = AxPlt('r*', "In Position Flag Duration\n[s]", ylimsIP, False)
+    # plot29 = AxPlt('r*', "In Position Flag Duration\n[s]", ylimsIP, False)
 
-    offsPlot.plot_ax(ax_lst, (4,0), 1, 1,
-                     np.array(recData['tcs:offsetPoA1.VALA']).T,
-                     plotLabel='P Offset', ds='steps-post')
-    offsPlot.add_plot(ax_lst,
-                      np.array(recData['tcs:offsetPoA1.VALB']).T,
-                      ls='r', plotLabel='Q Offset',alphaT=0.40, ds='steps-post')
-    offsPlot2.plot_ax(ax_lst, (4,1), 1, 1,
-                     np.array(recData['tcs:offsetPoA1.VALA']).T,
-                     plotLabel='P Offset', ds='steps-post')
-    offsPlot2.add_plot(ax_lst,
-                      np.array(recData['tcs:offsetPoA1.VALB']).T,
-                      ls='r', plotLabel='Q Offset',alphaT=0.40, ds='steps-post')
+    plot10Array = inFalsePos
+    plot11Array = np.array(tcsipData).T
+    plot12Array = np.array(recData['cr:inPosition']).T
+    plot13Array = np.array(recData['mc:inPosition']).T
+    plot14Array = np.array(recData['ag:inPosition']).T
+    plot15Array = np.array(recData['ag:oi:inPosition']).T
 
-    inposPlot.plot_ax(ax_lst, (5,0), 1, 1,
-                      np.array(recData['mc:inPosition']).T,
+    plot20Array = np.array(azdP).T
+    plot20bArray = np.array(azdD).T
+    plot21Array = np.array(eldP).T
+    plot21bArray = np.array(eldD).T
+    plot22Array = np.array(tcsipData).T
+    # plot13Array = np.array(recData['mc:inPosition']).T
+    # plot14Array = np.array(recData['pwfs1:inPosition']).T
+    # plot15Array = np.array(recData['pwfs2:inPosition']).T
+
+    plot10.plot_ax(ax_lst, (0,0), 2, 1,
+                     plot10Array,
+                     plotLabel='InPos Duration',
+                     offZone = offTotalZones)
+    plot11.plot_ax(ax_lst, (2,0), 1, 1,
+                      plot11Array,
+                      plotLabel='TCS InPos', ds='steps-post',
+                      offZone = offTotalZones)
+    plot12.plot_ax(ax_lst, (3,0), 1, 1,
+                      plot12Array,
+                      plotLabel='CRCS InPos', ds='steps-post',
+                      offZone = offTotalZones)
+    plot13.plot_ax(ax_lst, (4,0), 1, 1,
+                      plot13Array,
+                      plotLabel='MCS InPos', ds='steps-post',
+                      offZone = offTotalZones)
+    plot14.plot_ax(ax_lst, (5,0), 1, 1,
+                      plot14Array,
+                      plotLabel='AG InPos', ds='steps-post',
+                      offZone = offTotalZones)
+    plot15.plot_ax(ax_lst, (6,0), 1, 1,
+                      plot15Array,
                       bottomPlot=True,
-                      plotLabel='InPos', ds='steps-post')
-    inposPlot2.plot_ax(ax_lst, (5,1), 1, 1,
-                      np.array(recData['mc:inPosition']).T,
-                      bottomPlot=True,
-                      plotLabel='InPos', ds='steps-post')
-    # elPlot.plot_ax(ax_lst, (2,0), 2, 2, np.array(recData['mc:elCurrentPos']).T, plotLabel='El Pos')
-    # elPlot.add_plot(ax_lst, np.array(recData['tcs:demandEl']).T, ls='r-', plotLabel='El Dmd',alphaT=0.40)
-    # tdTC1.plot_ax(ax_lst, (2,0), 1, 2, diffTC1, plotLabel='TC1-LA1')
-    # deltaTLA1.plot_ax(ax_lst, (3,0), 1, 2, dtLA1, plotLabel='delta LA1')
+                      plotLabel='AG-OI InPos', ds='steps-post',
+                      offZone = offTotalZones)
 
-    # rmsTDLA1.plot_ax(ax_lst, (4,0), 1, 2, rmsTC1, bottomPlot=True, ds='steps-post')
-    # rmsTDLA1.add_plot(ax_lst, rmsTCS, ls='r', bottomPlot=True, ds='steps-post', alphaT=0.90)
-    # rmsTDLA1.add_plot(ax_lst, rmsMCS, ls='g', bottomPlot=True, ds='steps-post', alphaT=0.70)
-    # rmsTDLA1.add_plot(ax_lst, rmsSCS, ls='y', bottomPlot=True, ds='steps-post', alphaT=0.50)
-    # rmsTDLA1.add_plot(ax_lst, rmsCRCS, ls='c', bottomPlot=True, ds='steps-post', alphaT=0.30)
+    plot20.plot_ax(ax_lst, (0,1), 3, 1, plot20Array,
+                   plotLabel='Az Diff Pos',
+                   offZone = offTotalZones)
+    plot20.add_plot(ax_lst, plot20bArray, ls='r-',
+                    plotLabel='Az Diff Dmd', alphaT=0.40)
+    plot21.plot_ax(ax_lst, (3,1), 3, 1, plot21Array,
+                   plotLabel='El Diff Pos',
+                   offZone = offTotalZones)
+    plot21.add_plot(ax_lst, plot21bArray, ls='r-',
+                    plotLabel='El Diff Dmd', alphaT=0.40)
+    plot22.plot_ax(ax_lst, (6,1), 1, 1,
+                      plot22Array,
+                      bottomPlot=True,
+                      plotLabel='TCS InPos', ds='steps-post')
 
     plotConfig(ax_lst)
 
