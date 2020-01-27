@@ -1,0 +1,16 @@
+# Ignore all .h5 files
+*.h5
+
+# Ignore all input txt files
+*.txt
+
+# Ignore all image files
+*.png
+*.jpeg
+*.jpg
+*.bmp
+
+# Ignore all vim autogen files
+*.swp
+*.swo
+*.swn
