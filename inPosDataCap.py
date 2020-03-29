@@ -14,7 +14,7 @@ from dataFromGea import geaKeys, geaExtractor
 statusStr = 'not connected'
 # set the the IP Address for the systems from which you need to read
 # os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.36 172.17.2.32"
-os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.255"
+os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.255 172.16.71.11"
 
 def parse_args():
     '''
@@ -89,11 +89,17 @@ def parse_args():
                            default='',
                            help='User defined start time of data capture')
 
+    parser_ca.add_argument('-tc',
+                           '--timecapture',
+                           dest='tcap',
+                           default='time',
+                           help='Where to get timestamp, i.e "time", "native"')
+
     args = parser.parse_args()
     args.func(args)
     return args
 
-def monChan(chanNames):
+def monChan(chanNames, frm):
     print(os.environ['EPICS_CA_ADDR_LIST'])
     # Initialize empty arrays
     chanList = []
@@ -101,7 +107,7 @@ def monChan(chanNames):
     chanString = []
     # Go through EPICS channel names in array and initializes PV object
     for cn in chanNames:
-        chan = epics.PV(cn)
+        chan = epics.PV(cn, form=frm)
         time.sleep(0.25) # needed to give the PV object time to connect
         chanSt = repr(chan)
         # Check if PV object connected successfully, if not, do not add to
@@ -144,7 +150,7 @@ def caRealTimeCap(args):
                         minutes=int(args.rtMin))
     with open(args.recFile, 'r') as f:
         recList = f.read().splitlines()
-    recInfo = monChan(recList)
+    recInfo = monChan(recList, args.tcap)
     # Create Dictionary for each EPICS Record data
     recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True

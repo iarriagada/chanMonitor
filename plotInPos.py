@@ -229,7 +229,7 @@ class AxPlt:
         self.alpha = 1.0
 
     def plot_ax(self, ax_lst, position, height, width, data, offZone = [],
-                bottomPlot=False, errorLine=False, zonesPlot=True,
+                bottomPlot=False, errorLine=[], zonesPlot=True,
                 ds=None, plotLabel=None, alphaT=1.0, stemp = False):
         '''
         Plot data in corresponding axes
@@ -266,14 +266,14 @@ class AxPlt:
                          drawstyle=self.drawstyle, label=self.label, alpha=self.alpha)
 
         if errorLine:
-            self.ax.axhline(y=0.0068, linestyle='-.', linewidth=1.25, color='crimson')
+            self.ax.axhline(y=errorLine[1], linestyle='-.', linewidth=1.25, color='crimson')
             # self.ax.axhline(y=0.006, linestyle='-.', linewidth=1.25, color='darkorange')
-            self.ax.axhline(y=-0.0068, linestyle='-.', linewidth=1.25, color='crimson')
+            self.ax.axhline(y=errorLine[0], linestyle='-.', linewidth=1.25, color='crimson')
             # self.ax.axhline(y=-0.006, linestyle='-.', linewidth=1.25, color='darkorange')
-            self.ax.fill_between(self.dataT, self.dataY, 0.0068,
-                                 where=[True if y>0.0068 else False for y in self.dataY], color='y')
-            self.ax.fill_between(self.dataT, self.dataY, -0.0068,
-                                 where=[True if y<-0.0068 else False for y in self.dataY], color='y')
+            self.ax.fill_between(self.dataT, self.dataY, errorLine[1],
+                                 where=[True if y>errorLine[1] else False for y in self.dataY], color='y')
+            self.ax.fill_between(self.dataT, self.dataY, errorLine[0],
+                                 where=[True if y<errorLine[0] else False for y in self.dataY], color='y')
 
         if len(offZone):
             for oz in offZone:
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     plot21 = AxPlt('g-', "MCS Elevation\nPosition\n[deg]", False)
     plot22 = AxPlt('b-', "MCS Azimuth\nPosition Error\n[deg]", ylims, False)
     plot23 = AxPlt('g-', "MCS Elevation\nPosition Error\n[deg]", ylims, False)
-    plot24 = AxPlt('g-*', "CRCS\nPosition Error\n[deg]", ylims, False)
+    plot24 = AxPlt('g-', "CRCS\nPosition Error\n[deg]", ylims, False)
     plot25 = AxPlt('r-', "CRCS\nVelocity\n[bool]", ylims, False)
     plot26 = AxPlt('b-', "CRCS\ndiff Velocity\n[bool]", ylims, False)
     plot27 = AxPlt('k', "CRCS\nIn Position\n[bool]", ylimsOFF, False)
@@ -535,7 +535,7 @@ if __name__ == '__main__':
                    # offZone = offTotalZones)
     plot24.plot_ax(ax_lst, (6,1), 1, 1,
                    plot24Array,
-                   errorLine=True,
+                   errorLine=[-0.0068, 0.0068],
                    plotLabel='CRCS Error')
                    # plotLabel='CRCS Error',
                    # offZone = offTotalZones)
@@ -548,6 +548,7 @@ if __name__ == '__main__':
                    # offZone = offTotalZones)
     plot26.plot_ax(ax_lst, (8,1), 1, 1,
                    plot26Array,
+                   errorLine=[-0.004, 0.004],
                    plotLabel='CRCS diff Vel')
                    # plotLabel='TCS InPos', ds='steps-post',
                    # offZone = offTotalZones)
