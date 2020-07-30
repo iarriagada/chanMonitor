@@ -41,12 +41,32 @@ def inPosCorr(dataA):
         currIP = 1
     corrInPos = [currIP]
     for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
-        if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
+        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
+        if ((abs(y)<0.0068) and (abs(dy)<0.004)):
             currIP = 1
-        elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
+        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
+        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
             currIP = 0
         corrInPos.append(currIP)
-    # corrInPos = [1 if ((abs(y)<0.0068) and (abs(dy)<0.004)) else 0 for y,dy in np.array([dataA[1][3:],dataCRA[1]]).T]
+    corrInPosData = [dataA[0][3:],corrInPos]
+    return corrInPosData
+
+def inPosCorrH(dataA):
+    dataCR = derivData(dataA)
+    dataCRA = avgData(dataCR, 3)
+    if (abs(dataCRA[1][0])>0.004) and (abs(dataA[1][3])>0.0068):
+        currIP = 0
+    else:
+        currIP = 1
+    corrInPos = [currIP]
+    for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
+        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
+        if ((abs(y)<0.006) and (abs(dy)<0.0004)):
+            currIP = 1
+        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
+        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
+            currIP = 0
+        corrInPos.append(currIP)
     corrInPosData = [dataA[0][3:],corrInPos]
     return corrInPosData
 
@@ -168,32 +188,48 @@ class DataAx:
         - ylims: Y-axis limits
         - ax: the pyplot.ax object to be plotted
         - dataT: Time-axis data
-        - dataY: Y-axis data
+        - color: Line color
+        - lwidth: Line width
+        - label: Line label, displayed on legend box
+        - ylabel: Y axis label
+        - ylims: Y axis limits
+        - alpha: Line transparency
+        - errorline: Y coord for errorline
+        - zone: Define the limits of a colored zone
+        - pos: Plot position within the figure
+        - height: Plot height within the figure
+        - mstax: Define one of the plots as the master axis
+        - ys: Plot vertical starting point within the figure
+        - ye: Plot vertical end point within the figure
+        - xs: Plot horizontal starting point within the figure
+        - xe: Plot horizontal end point within the figure
+        - bottomax: Bottom axis flag for each plot
+        - sharedax: Shared axis flag
+        - histbins: Number of bins for a histogram
+        - limsbins: Limits for the span of the bins
+        - bindata: Output of the plot.hist function
+        - bins: Output of the plot.hist function
+        - patches: Output of the plot.hist function
 
     Methods
         - plot_ax: Plots axis object. Checks and adds the shared-x feature.
           Adds horizontal lines (to visualize limits.
-        - plot_twin: Plot a second set of data on an additional axis to
-          the right of the plot box.
-        - add_plot: Adds additional plots to the existing axis. This needs to
-          be called after plot_ax as been defined on
-          the corresponding object.
 
     '''
 
-    def __init__(self, data, linestyle, ylabel='', ylims=[], label=None,
+    def __init__(self, data, linestyle='False', ylabel='', ylims=[], label=None,
                  drawstyle=None, shax=None, pos=[1,1], height=1,
                  masterax=False, errorline=[], zone=[], alpha=1.0,
-                 linewidth=1.25):
+                 linewidth=1.25, histbins=False, limsbins=None, color=None):
         '''
         Creates the plot object
         '''
         self.linestyle = linestyle
         self.drawstyle = drawstyle
+        self.color = color
         self.lwidth = linewidth
         self.label = label
         self.ylabel = ylabel
-        # self.zlabel = zlabel
         self.ylims = ylims
         self.ax = None
         self.alpha = alpha
@@ -209,57 +245,87 @@ class DataAx:
         self.xe = None
         self.bottomax = False
         self.sharedax = shax
+        self.histbins = histbins
+        self.limsbins = limsbins
+        self.bindata = False
+        self.bins = False
+        self.patches = False
 
 
     def plot_ax(self, gs, masterax=None):
+        ''' plot_ax
+
+        This method defines each axes to be plotted. It will prepare each ax
+        depending if is a regular plot or a histogram
+        It places each ax within the gridspace, and defines all its
+        characteristics
         '''
-        Plot data in corresponding axes
-        '''
-        # dataT, dataY = zip(*self.data)
-        dataT, dataY = self.data
+
+        # Check if plot is a histogram. If it's not, prepares the x & y axis for
+        # plotting. If it is prepares an array with the x values.
+        if not(self.histbins):
+            dataT, dataY = self.data
+        else:
+            dataX = self.data
 
         # Checks if the first plot has been defined, if not, plot the current
         # data set and set the shareFlag for the rest of the plots.
-        # if masterax and not(self.mstax) and not(masterax.pos == self.pos):
         if not(self.mstax):
-            # Defines the plot box and main axis with which Y is shared
+            # Defines the plot box and main axis with which X-axis is shared
+            print('creating', self.label)
             self.ax = plt.subplot(gs[self.ys:self.ye,self.xs:self.xe],
                                   sharex=masterax.ax)
+            print('ax created')
         else:
             # Defines the plot box
+            print('creating', self.label)
             self.ax = plt.subplot(gs[self.ys:self.ye,self.xs:self.xe])
+            print('ax created')
 
-        # Plot the data
-        if not(self.drawstyle):
-            self.ax.plot(dataT, dataY, self.linestyle, linewidth=self.lwidth,
-                         label=self.label, alpha=self.alpha)
+        # Configures each axes for plotting
+        if not(self.histbins):
+            # Check to see if drawstyle has been defined. This is used when
+            # plotting something like a boolean plot
+            if not(self.drawstyle):
+                self.ax.plot(dataT, dataY, self.linestyle, linewidth=self.lwidth,
+                            label=self.label, alpha=self.alpha)
+            else:
+                self.ax.plot(dataT, dataY, c=self.linestyle, linewidth=self.lwidth,
+                            drawstyle=self.drawstyle, label=self.label,
+                            alpha=self.alpha)
+
+            # Define a two horizontal line in the ax, if errorline has been set
+            if self.errorline:
+                self.ax.axhline(y=self.errorline[1], linestyle='-.',
+                                linewidth=1.55, color='crimson',
+                                label='|error|={0}'.format(self.errorline[1]))
+                self.ax.axhline(y=self.errorline[0], linestyle='-.',
+                                linewidth=1.55, color='crimson')
+                self.ax.fill_between(dataT, dataY, self.errorline[1],
+                                    where=[True if y>self.errorline[1]
+                                            else False for y in dataY], color='y')
+                self.ax.fill_between(dataT, dataY, self.errorline[0],
+                                    where=[True if y<self.errorline[0]
+                                            else False for y in dataY], color='y')
+
+            # Define an area of the plot to be shaded
+            if len(self.zone):
+                for zs in self.zone:
+                    # print(zs)
+                    self.ax.axvspan(zs[0][0][0], zs[0][0][1],
+                                    facecolor=zs[0][0][2], alpha=0.15,
+                                    label=zs[1])
+                    for oz in zs[0][1:]:
+                        self.ax.axvspan(oz[0], oz[1], facecolor=oz[2], alpha=0.15)
+        # Configure an histogram ax
         else:
-            self.ax.plot(dataT, dataY, c=self.linestyle, linewidth=self.lwidth,
-                         drawstyle=self.drawstyle, label=self.label,
-                         alpha=self.alpha)
+            self.bindata, self.bins, self.patches = \
+                self.ax.hist(dataX, bins=self.histbins, label=self.label,
+                             range=self.limsbins, edgecolor='black',
+                             alpha=self.alpha, color=self.color)
+            # print(self.bins)
 
-        if self.errorline:
-            self.ax.axhline(y=self.errorline[1], linestyle='-.',
-                            linewidth=1.55, color='crimson',
-                            label='|error|={0}'.format(self.errorline[1]))
-            self.ax.axhline(y=self.errorline[0], linestyle='-.',
-                            linewidth=1.55, color='crimson')
-            self.ax.fill_between(dataT, dataY, self.errorline[1],
-                                 where=[True if y>self.errorline[1]
-                                        else False for y in dataY], color='y')
-            self.ax.fill_between(dataT, dataY, self.errorline[0],
-                                 where=[True if y<self.errorline[0]
-                                        else False for y in dataY], color='y')
-
-        if len(self.zone):
-            for zs in self.zone:
-                # print(zs)
-                self.ax.axvspan(zs[0][0][0], zs[0][0][1],
-                                facecolor=zs[0][0][2], alpha=0.15,
-                                label=zs[1])
-                for oz in zs[0][1:]:
-                    self.ax.axvspan(oz[0], oz[1], facecolor=oz[2], alpha=0.15)
-
+        # Define the plot area style for the ax
         self.ax.grid(True)
         self.ax.tick_params("y", colors="b")
         self.ax.set_ylabel(self.ylabel, color="b")
@@ -332,8 +398,9 @@ class DataAxesPlotter:
         Dax[self.masterax[0]][self.masterax[1]].plot_ax(self.gs)
         for c in Dax:
             for n in Dax[c].keys()-[self.masterax[1]]:
+                # if not(Dax[c][n].histbins):
                 Dax[c][n].plot_ax(self.gs,
-                                  Dax[self.masterax[0]][self.masterax[1]])
+                                Dax[self.masterax[0]][self.masterax[1]])
 
     def coordPlot(self):
         # This method starts by constructing a dictionary for the position of
@@ -395,7 +462,6 @@ class DataAxesPlotter:
                     # Define the bottom plot for each column
                     if j == Da[str(i)]['nRows']:
                         Dax[plotname].bottomax = True
-                    # if Dax[plotname].mstax:
                     if not(self.maFlag):
                         self.masterax = plotname
                         Dax[plotname].mstax = True
@@ -420,7 +486,7 @@ class DataAxesPlotter:
                                   Dax[self.masterax[0]][self.masterax[1]])
         self.dictAxes = {'s':Dax}
 
-    def plotConfig(self):
+    def plotConfig(self, title=None, xlabels=None):
         '''
         This function is used to:
             - Disable tick labels for plots other than the bottom positions
@@ -430,24 +496,38 @@ class DataAxesPlotter:
         Dax = self.dictAxes
         for c in Dax:
             for n in Dax[c]:
-                Dax[c][n].ax.grid(True)
+                # Dax[c][n].ax.grid(True)
                 Dax[c][n].ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
                 # ax[0].ax.xaxis_date()
                 if not(Dax[c][n].bottomax):
                     plt.setp(Dax[c][n].ax.get_xticklabels(), fontsize=9, visible=False)
                 else:
-                    Dax[c][n].ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
-                    Dax[c][n].ax.xaxis.set_major_formatter(
-                        matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
-                    Dax[c][n].ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
-                    plt.setp(Dax[c][n].ax.get_xticklabels(), fontsize=9,
-                            rotation=30, ha='right')
-                    # # ax[0].ax.set_xlim(lowX,highX)
-                    # ax[0].ax.set_xlim(time[5],time[len(time)-5])
-                    # h, l = ax[0].ax.get_legend_handles_labels()
-                    # ax[0].ax.legend(h, l, loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
-        plt.subplots_adjust(top=0.90, bottom=0.08, left=0.06, right=0.95,
-                            hspace=0.20, wspace=0.15)
+                    if not(Dax[c][n].histbins):
+                        Dax[c][n].ax.grid(True)
+                        Dax[c][n].ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
+                        Dax[c][n].ax.xaxis.set_major_formatter(
+                            matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
+                        Dax[c][n].ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
+                        plt.setp(Dax[c][n].ax.get_xticklabels(), fontsize=9,
+                                rotation=30, ha='right')
+                        # # ax[0].ax.set_xlim(lowX,highX)
+                        # ax[0].ax.set_xlim(time[5],time[len(time)-5])
+                        # h, l = ax[0].ax.get_legend_handles_labels()
+                        # ax[0].ax.legend(h, l, loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
+                    else:
+                        plt.xticks(Dax[c][n].bins)
+                        # Dax[c][n].ax.xaxis.set_major_locator(ticker.MaxNLocator(Dax[c][n].histbins))
+                        # Dax[c][n].ax.xaxis.set_major_locator(
+                            # ticker.MaxNLocator(nbins=11, symmetric=True))
+                        # Dax[c][n].ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(n=2))
+                        plt.setp(Dax[c][n].ax.get_xticklabels(), fontsize=9,
+                                rotation=30, ha='right')
+                        if not(xlabels):
+                            continue
+                        Dax[c][n].ax.set_xlabel(xlabels[c])
+        plt.suptitle(title)
+        plt.subplots_adjust(top=0.95, bottom=0.15, left=0.15, right=0.95,
+                            hspace=0.20, wspace=0.2)
         plt.show()
 
 

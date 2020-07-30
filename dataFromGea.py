@@ -63,6 +63,7 @@ def geaExtractor(record, startDate, endDate):
                                         int(tes), int(tes - int(tes))*1000000000,
                                         10000,
                                         0)
+        # print(geaRecord)
         # Auxiliary array for the 15 min of data
         # geaDataAux = [[datetime.fromtimestamp(val['secs'] + val['nano']/1000000000),
                     # val['value'][0]] for val in geaRecord[0]['values']]

@@ -48,7 +48,7 @@ def parse_args():
                             '--recname',
                             dest='rn',
                             action='store_true',
-                            help='Use this option to get data from single Epicsi\
+                            help='Use this option to get data from single Epics\
                             record')
 
     # Define real time data capture using Channel access
