@@ -132,7 +132,6 @@ def offsetZones(offsetArray, zcolor):
     zonecolor = [zcolor for i in range(len(offsetPA))]
     print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
     offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
-    print(offsetZonesArray[1:10])
     return offsetZonesArray
 
 def ipZones(offsetArray, zcolor):
@@ -218,25 +217,18 @@ class DataAx:
     '''
 
     def __init__(self, data, linestyle='False', ylabel='', ylims=[], label=None,
-                 drawstyle=None, shax=None, pos=[1,1], height=1,
+                 drawstyle=None, shax=None, height=1,
                  masterax=False, errorline=[], zone=[], alpha=1.0,
                  linewidth=1.25, histbins=False, limsbins=None, color=None):
         '''
         Creates the plot object
         '''
-        self.linestyle = linestyle
-        self.drawstyle = drawstyle
-        self.color = color
-        self.lwidth = linewidth
-        self.label = label
+        # Axes attributes
         self.ylabel = ylabel
         self.ylims = ylims
         self.ax = None
-        self.alpha = alpha
-        self.data = data
         self.errorline = errorline
         self.zone = zone
-        self.pos = pos
         self.height = height
         self.mstax = masterax
         self.ys = None
@@ -244,7 +236,17 @@ class DataAx:
         self.xs = None
         self.xe = None
         self.bottomax = False
-        self.sharedax = shax
+        self.shaxname = shax
+        self.shax = None
+        # Plot attributes
+        self.data = data
+        self.label = label
+        self.linestyle = linestyle
+        self.label = label
+        self.drawstyle = drawstyle
+        self.color = color
+        self.lwidth = linewidth
+        self.alpha = alpha
         self.histbins = histbins
         self.limsbins = limsbins
         self.bindata = False
@@ -294,11 +296,13 @@ class DataAx:
                             drawstyle=self.drawstyle, label=self.label,
                             alpha=self.alpha)
 
+            self.ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
             # Define a two horizontal line in the ax, if errorline has been set
             if self.errorline:
                 self.ax.axhline(y=self.errorline[1], linestyle='-.',
                                 linewidth=1.55, color='crimson',
                                 label='|error|={0}'.format(self.errorline[1]))
+                self.ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
                 self.ax.axhline(y=self.errorline[0], linestyle='-.',
                                 linewidth=1.55, color='crimson')
                 self.ax.fill_between(dataT, dataY, self.errorline[1],
@@ -317,12 +321,14 @@ class DataAx:
                                     label=zs[1])
                     for oz in zs[0][1:]:
                         self.ax.axvspan(oz[0], oz[1], facecolor=oz[2], alpha=0.15)
+                self.ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
         # Configure an histogram ax
         else:
             self.bindata, self.bins, self.patches = \
                 self.ax.hist(dataX, bins=self.histbins, label=self.label,
                              range=self.limsbins, edgecolor='black',
                              alpha=self.alpha, color=self.color)
+            self.ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
             # print(self.bins)
 
         # Define the plot area style for the ax
@@ -332,11 +338,25 @@ class DataAx:
         if self.ylims:
             self.ax.set_ylim(self.ylims[0], self.ylims[1])
 
+    def set_ax(self, gs, tcells, rows, masterax):
+        if self.shax:
+            self.ax = self.shax.ax
+            self.ylabel = self.shax.ylabel
+            self.bottomax = self.shax.bottomax
+        else:
+            ys = int(self.ys * (tcells/rows))
+            ye = int(self.ye * (tcells/rows))
+            self.ax = plt.subplot(gs[ys:ye,self.xs:self.xe],
+                                  sharex=masterax.ax)
+
 # axPlt object end
 
 class DataAxesPlotter:
-    def __init__(self, Axes):
-        self.dictAxes = Axes
+    def __init__(self, ncols=1):
+        # self.dictAxes = Axes
+        self.Axes = collections.OrderedDict()
+        for n in ncols:
+            self.Axes['c'+str(n+1)] = collections.OrderedDict()
         self.masterax = None
         self.bottomax = []
         self.gs = None
@@ -349,7 +369,7 @@ class DataAxesPlotter:
         # proper coordinates and dimentions for each plot
         # The dictionary contains a subdict for each column as well as a key
         # with the total number of columns for the plot
-        Dax = self.dictAxes
+        Dax = self.Axes
         Dshax = {}
         ric = {}
         i = 0
@@ -357,21 +377,24 @@ class DataAxesPlotter:
             Dshax[c] = {}
             j = 0
             for n in Dax[c]:
-                if not(Dax[c][n].sharedax):
+                shaxname = Dax[c][n].shaxname
+                if not(shaxname):
                     Dax[c][n].xs = i
                     Dax[c][n].xe = i + 1
                     Dax[c][n].ys = j
                     Dax[c][n].ye = Dax[c][n].height + j
                     j = Dax[c][n].ye
-                    if not(self.maFlag):
-                        self.masterax = [c,n]
+                    # if not(self.maFlag):
+                    if not(self.masterax):
+                        self.masterax = Dax[c][n]
                         Dax[c][n].mstax = True
                         self.maFlag = True
                     bax = n
                 else:
-                    if not(Dax[c][n].sharedax in Dshax[c].keys()):
-                        Dshax[c][Dax[c][n].sharedax] = []
-                    Dshax[c][Dax[c][n].sharedax] += [n]
+                    Dax[c][n].shax = Dax[c][shaxname]
+                    # if not(Dax[c][n].sharedax in Dshax[c].keys()):
+                        # Dshax[c][Dax[c][n].sharedax] = []
+                    # Dshax[c][Dax[c][n].sharedax] += [n]
             ric[c] = j
             Dax[c][bax].bottomax = True
             i += 1
@@ -497,7 +520,7 @@ class DataAxesPlotter:
         for c in Dax:
             for n in Dax[c]:
                 # Dax[c][n].ax.grid(True)
-                Dax[c][n].ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
+                # Dax[c][n].ax.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize = 'small')
                 # ax[0].ax.xaxis_date()
                 if not(Dax[c][n].bottomax):
                     plt.setp(Dax[c][n].ax.get_xticklabels(), fontsize=9, visible=False)
@@ -526,10 +549,49 @@ class DataAxesPlotter:
                             continue
                         Dax[c][n].ax.set_xlabel(xlabels[c])
         plt.suptitle(title)
-        plt.subplots_adjust(top=0.95, bottom=0.15, left=0.15, right=0.95,
+        plt.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.95,
                             hspace=0.20, wspace=0.2)
         plt.show()
 
+    @staticmethod
+    def plot_attributes(data, linestyle='False', ylabel='', ylims=[], label=None,
+                 drawstyle=None, shax=None, height=1,
+                 masterax=False, errorline=[], zone=[], alpha=1.0,
+                 linewidth=1.25, histbins=False, limsbins=None, color=None):
+        '''
+        Creates the plot object
+        '''
+        return {
+        # Axes attributes
+        'ylabel':ylabel,
+        'ylims':ylims,
+        'ax':None,
+        'errorline':errorline,
+        'zone':zone,
+        'height':height,
+        'mstax':masterax,
+        'ys':None,
+        'ye':None,
+        'xs':None,
+        'xe':None,
+        'bottomax':False,
+        'sharedax':shax,
+        # Plot attributes
+        'plots':[],
+        'data':data,
+        'label':label,
+        'linestyle':linestyle,
+        'label':label,
+        'drawstyle':drawstyle,
+        'color':color,
+        'lwidth':linewidth,
+        'alpha':alpha,
+        'histbins':histbins,
+        'limsbins':limsbins,
+        'bindata':False,
+        'bins':False,
+        'patches':False
+        }
 
 
 if __name__ == '__main__':
