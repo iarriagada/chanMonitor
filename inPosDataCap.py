@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.5
+#!/usr/bin/env python3
 
 import os
 import argparse
@@ -7,14 +7,15 @@ import time
 import h5py
 import re
 import numpy as np
+import _thread
 
 from datetime import datetime, timedelta
 from dataFromGea import geaKeys, geaExtractor
 
 statusStr = 'not connected'
 # set the the IP Address for the systems from which you need to read
-# os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.36 172.17.2.32"
-os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.255 172.16.71.11"
+os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.36 172.17.2.32"
+# os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.255 172.16.71.11"
 
 def parse_args():
     '''
@@ -100,7 +101,7 @@ def parse_args():
     return args
 
 def monChan(chanNames, frm):
-    print(os.environ['EPICS_CA_ADDR_LIST'])
+    print('EPICS_CA_ADDR_LIST = {}'.format(os.environ['EPICS_CA_ADDR_LIST']))
     # Initialize empty arrays
     chanList = []
     cnameList = []
@@ -133,8 +134,14 @@ def createH5F(fname, rInfo, rDic):
         g[0].create_dataset('timestamp', data=rDic[g[1]][0])
         g[0].create_dataset('value', data=rDic[g[1]][1])
 
+def on_press_thread(run_flag):
+    key_press = input()
+    if key_press == 'x':
+        print('Stopping capture')
+        run_flag[0] = False
 
 def caRealTimeCap(args):
+    run_flag = [True]
     # args = parse_args() # capture the input arguments
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
@@ -155,7 +162,9 @@ def caRealTimeCap(args):
     recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True
     loopcnt = 0
-    while ((currTime - startTime) < dataCapDur):
+    _thread.start_new_thread(on_press_thread, (run_flag,))
+    print('To stop capture now: x + [Enter]')
+    while (((currTime - startTime) < dataCapDur) and run_flag[0]):
         startWhile = datetime.now()
         for name in recInfo[1]:
             if firstPass or not(float(recDic[name][2].timestamp)
@@ -178,6 +187,7 @@ def caRealTimeCap(args):
         time.sleep(waitTime)
 
     createH5F(fileName, recInfo[1], recDic)
+    print('Data capture complete with file: {}'.format(fileName))
 
 def geaExtraction(args):
     # args = parse_args() # capture the input arguments
@@ -199,10 +209,6 @@ def geaExtraction(args):
         recDic[recname][1] = recData[1]
 
     createH5F(fileName, recList, recDic)
-
-
-    # pass
-
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments
