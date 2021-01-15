@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import argparse
 import epics
 import time
@@ -13,12 +14,6 @@ from datetime import datetime, timedelta
 from dataFromGea import geaKeys, geaExtractor
 
 STATUS_STR = 'not connected'
-IP_LIST = {'cp':'172.17.2.255',
-           'sbf':'172.16.2.255 172.16.71.255',
-           'mk':'10.2.2.255',
-           'hbf':'10.1.2.255'}
-# set the the IP Address for the systems from which you need to read
-# os.environ["EPICS_CA_ADDR_LIST"] = "172.17.2.255 172.16.71.11"
 
 def parse_args():
     '''
@@ -99,12 +94,6 @@ def parse_args():
                            default='time',
                            help='Where to get timestamp, i.e "time", "native"')
 
-    parser_ca.add_argument('-loc',
-                           '--location',
-                           dest='site',
-                           default='cp',
-                           help='Specify the site from which to get the data, {cp, mk, sbf, hbf}')
-
     args = parser.parse_args()
     args.func(args)
     return args
@@ -117,16 +106,26 @@ def monChan(chanNames, frm):
     chanString = []
     # Go through EPICS channel names in array and initializes PV object
     for cn in chanNames:
-        chan = epics.PV(cn, form=frm)
-        time.sleep(0.25) # needed to give the PV object time to connect
-        chanSt = repr(chan)
-        # Check if PV object connected successfully, if not, do not add to
-        # final array and print message
-        if re.search(STATUS_STR,chanSt) == None:
-            cnameList.append(cn)
-            chanList.append(chan)
-        else:
-            print("{0} not connected".format(cn))
+        conn_ctr = 1 # Connection counter
+        print("Connecting to {}...".format(cn))
+        # Go into connection loop
+        while True:
+            chan = epics.PV(cn, form=frm)
+            time.sleep(0.25) # needed to give the PV object time to connect
+            chanSt = repr(chan)
+            # Check if PV object connected successfully and exit loop
+            if re.search(STATUS_STR,chanSt) == None:
+                cnameList.append(cn)
+                chanList.append(chan)
+                print("Connected!")
+                break
+            conn_ctr += 1
+            # If channel doesn't connect after 8 retries (2 sec), break from
+            # loop
+            if conn_ctr == 9:
+                print("{0} didn't connect after {1} tries".format(cn, conn_ctr-1))
+                break
+
     for ch in chanList:
         if re.search('string', ch.info):
             chanString.append(1)
@@ -150,7 +149,6 @@ def on_press_thread(run_flag):
         run_flag[0] = False
 
 def caRealTimeCap(args):
-    os.environ["EPICS_CA_ADDR_LIST"] = IP_LIST[args.site]
     run_flag = [True]
     # args = parse_args() # capture the input arguments
     startTime = datetime.now() # starting time of the capture
@@ -168,6 +166,8 @@ def caRealTimeCap(args):
     with open(args.recFile, 'r') as f:
         recList = f.read().splitlines()
     recInfo = monChan(recList, args.tcap)
+    if not(recInfo[0]):
+        sys.exit('No channels connected, aborting')
     # Create Dictionary for each EPICS Record data
     recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True
