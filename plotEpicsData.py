@@ -201,8 +201,8 @@ class DataAx:
     '''
     This class defines a plot object
     Attributes
-        - ax: the pyplot.ax handling each pair of axes
-        - shaxname: Name of DataAx object handling the common axes
+        - ax: the pyplot.ax handling each pair of axe
+        - shaxname: Name of DataAx object handling the common axe
         - shax: the pyplot.ax handler of the shaxname object
         - ylabel: Y-axis label
         - ylims: Y-axis limits
@@ -246,7 +246,7 @@ class DataAx:
         '''
         Creates the plot object
         '''
-        # Axes attributes
+        # Axe attributes
         self.ax = None
         self.shaxname = shax
         self.shax = None
@@ -279,7 +279,7 @@ class DataAx:
     def plot_ax(self, gs, tcells, rows, masterax):
         ''' plot_ax
 
-        This method defines each axes to be plotted. It will prepare each ax
+        This method defines each axe to be plotted. It will prepare each ax
         depending if is a regular plot or a histogram
         It places each ax within the gridspace, and defines all its
         characteristics
@@ -304,7 +304,7 @@ class DataAx:
         # Checks if the first plot has been defined, if not, plot the current
         # data set and set the shareFlag for the rest of the plots.
 
-        # Configures each axes for plotting
+        # Configures each axe for plotting
         if not(self.histbins):
             self.ax.plot(dataT, dataY, linestyle=self.linestyle,
                          linewidth=self.lwidth, color=self.color,
@@ -342,7 +342,6 @@ class DataAx:
             if not(self.bottomax):
                 plt.setp(self.ax.get_xticklabels(), fontsize=9, visible=False)
             else:
-                print('bottom ax!')
                 self.ax.grid(True)
                 self.ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
                 self.ax.xaxis.set_major_formatter(
@@ -373,6 +372,7 @@ class DataAx:
         self.ax.legend(loc='upper right',
                        bbox_to_anchor=(1, 1),
                        fontsize='small')
+        print('Setup done')
 
     def set_ax(self, gs, tcells, rows, masterax):
         if self.shax:
@@ -387,11 +387,11 @@ class DataAx:
 
 # axPlt object end
 
-class DataAxesPlotter:
+class DataAxePlotter:
     def __init__(self, ncols=1):
-        self.Axes = collections.OrderedDict()
+        self.Axe = collections.OrderedDict()
         for n in range(ncols):
-            self.Axes['c'+str(n+1)] = collections.OrderedDict()
+            self.Axe['c'+str(n+1)] = collections.OrderedDict()
         self.masterax = None
         self.gs = None
 
@@ -401,7 +401,7 @@ class DataAxesPlotter:
         # proper coordinates and dimentions for each plot
         # The dictionary contains a subdict for each column as well as a key
         # with the total number of columns for the plot
-        Dax = self.Axes
+        Dax = self.Axe
         ric = {}
         i = 0
         for c in Dax:
@@ -438,7 +438,7 @@ class DataAxesPlotter:
             - Set the date labels on the bottom plots
             - Update Plot Event Zones
         '''
-        Dax = self.Axes
+        Dax = self.Axe
         if xlabels:
             for c in Dax:
                 for n in Dax[c]:
@@ -470,15 +470,15 @@ if __name__ == '__main__':
     # plts['c1']['g5'] = DataAx([x,y2], 'b--', label='g5', shax='g2')
     # plts['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g-', 't4', pos=[1,1], label='g2', height=2)
     # plts['c2']['g6'] = DataAx([x,y3], 'k-', 't3', shax='g2', pos=[2,2], label='g6', height=1)
-    plts = DataAxesPlotter(2)
-    print(plts.Axes.keys())
-    plts.Axes['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4')
-    plts.Axes['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4')
-    plts.Axes['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4')
-    plts.Axes['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2)
+    plts = DataAxePlotter(2)
+    print(plts.Axe.keys())
+    plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4')
+    plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4')
+    plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4')
+    plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2)
     #plts['c1'] = pC1
     # plts['c2'] = pC2
-    # pltAx = DataAxesPlotter(plts)
+    # pltAx = DataAxePlotter(plts)
     plts.positionPlot()
     plts.plotConfig()
 
