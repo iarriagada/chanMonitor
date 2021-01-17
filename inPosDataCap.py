@@ -150,7 +150,6 @@ def on_press_thread(run_flag):
 
 def caRealTimeCap(args):
     run_flag = [True]
-    # args = parse_args() # capture the input arguments
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
         startTime = datetime.strptime(args.sttime, '%Y-%m-%d %H:%M:%S')
@@ -163,15 +162,20 @@ def caRealTimeCap(args):
     currTime = datetime.now()
     dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
                         minutes=int(args.rtMin))
+    # Read file with record names, ignore comments
     with open(args.recFile, 'r') as f:
-        recList = f.read().splitlines()
+        recList = [l.split('#')[0].strip()
+                   for l in f.read().splitlines() if l.split('#')[0]]
+    # Connect to the EPICS channels
     recInfo = monChan(recList, args.tcap)
+    # If no channel connected, abort the program
     if not(recInfo[0]):
         sys.exit('No channels connected, aborting')
     # Create Dictionary for each EPICS Record data
     recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
-    firstPass = True
+    firstPass = True # First data value capture flag
     loopcnt = 0
+    # Start "abort data capture" thread
     _thread.start_new_thread(on_press_thread, (run_flag,))
     print('To stop capture now: x + [Enter]')
     while (((currTime - startTime) < dataCapDur) and run_flag[0]):

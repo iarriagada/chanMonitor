@@ -1,4 +1,4 @@
-#! /usr/bin/python3.5
+#! /usr/bin/python3
 
 import xmlrpc.client as xmlClient
 import numpy as np
@@ -65,8 +65,6 @@ def geaExtractor(record, startDate, endDate):
                                         0)
         # print(geaRecord)
         # Auxiliary array for the 15 min of data
-        # geaDataAux = [[datetime.fromtimestamp(val['secs'] + val['nano']/1000000000),
-                    # val['value'][0]] for val in geaRecord[0]['values']]
         if not(geaRecord[0]['type']):
             geaDataAux = [[val['secs'] + val['nano']/1000000000,
                         np.array(val['value'][0], dtype='S32')] for val in geaRecord[0]['values']]
@@ -88,6 +86,6 @@ def geaExtractor(record, startDate, endDate):
     return geaData
 
 if __name__ == '__main__':
-    geaDataArray = geaExtractor('mc:azCurrentPos','2019-10-07 11:00:00',
-                                '2019-10-07 13:00:00')
+    geaDataArray = geaExtractor('mc:azCurrentPos','2021-01-07 01:00:00',
+                                '2021-01-07 09:00:00')
 
