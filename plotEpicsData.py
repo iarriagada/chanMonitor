@@ -240,7 +240,7 @@ class DataAx:
 
     def __init__(self, data, color, linestyle='-', marker=None,
                  drawstyle='default', label=None, ylabel='',
-                 ylims=[], shax=None, height=1,
+                 xlabel='', ylims=[], shax=None, height=1,
                  errorline=[], zone=[], alpha=1.0,
                  linewidth=1.25, histbins=False, limsbins=None):
         '''
@@ -251,6 +251,7 @@ class DataAx:
         self.shaxname = shax
         self.shax = None
         self.ylabel = ylabel
+        self.xlabel = xlabel
         self.ylims = ylims
         self.errorline = errorline
         self.zone = zone
@@ -284,6 +285,10 @@ class DataAx:
         It places each ax within the gridspace, and defines all its
         characteristics
         '''
+        if not(self.histbins):
+            shared_x_axis = masterax.ax
+        else:
+            shared_x_axis = None
 
         if self.shax:
             self.ax = self.shax.ax
@@ -293,7 +298,7 @@ class DataAx:
             ys = int(self.ys * (tcells/rows))
             ye = int(self.ye * (tcells/rows))
             self.ax = plt.subplot(gs[ys:ye,self.xs:self.xe],
-                                  sharex=masterax.ax)
+                                  sharex=shared_x_axis)
         # Check if plot is a histogram. If it's not, prepares the x & y axis for
         # plotting. If it is prepares an array with the x values.
         if not(self.histbins):
@@ -347,7 +352,7 @@ class DataAx:
                 self.ax.xaxis.set_major_formatter(
                     matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
                 self.ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
-                plt.setp(self.ax.get_xticklabels(), fontsize=9,
+                plt.setp(self.ax.get_xticklabels(), fontsize=8,
                          rotation=30, ha='right')
         # Configure an histogram ax
         else:
@@ -356,17 +361,18 @@ class DataAx:
                              range=self.limsbins, edgecolor='black',
                              alpha=self.alpha, color=self.color)
 
-            if not(self.bottomax):
-                plt.setp(self.ax.get_xticklabels(), fontsize=9, visible=False)
-            else:
-                plt.xticks(self.bins)
-                plt.setp(self.ax.get_xticklabels(), fontsize=9,
-                        rotation=30, ha='right')
+            # if not(self.bottomax):
+                # plt.setp(self.ax.get_xticklabels(), fontsize=7, visible=False)
+            # else:
+            self.ax.set_xlabel(self.xlabel, fontsize=9)
+            plt.xticks(self.bins)
+            plt.setp(self.ax.get_xticklabels(), fontsize=8,
+                    rotation=30, ha='right')
 
         # Define the plot area style for the ax
         self.ax.grid(True)
-        self.ax.tick_params("y", colors="b")
-        self.ax.set_ylabel(self.ylabel, color="b")
+        self.ax.tick_params("y", colors="k")
+        self.ax.set_ylabel(self.ylabel, color="k", fontsize=9)
         if self.ylims:
             self.ax.set_ylim(self.ylims[0], self.ylims[1])
         self.ax.legend(loc='upper right',

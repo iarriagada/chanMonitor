@@ -183,6 +183,8 @@ def caRealTimeCap(args):
         for name in recInfo[1]:
             if firstPass or not(float(recDic[name][2].timestamp)
                                 == float(recDic[name][0][-1])):
+                # Check if value is a string and store it in array with proper
+                # data type
                 if (recDic[name][3]):
                     recDic[name][1] = np.append(recDic[name][1],
                                                 np.array(recDic[name][2].value,
@@ -193,6 +195,7 @@ def caRealTimeCap(args):
         loopcnt += 1
         currTime = datetime.now()
         loopTime = (currTime - startWhile).total_seconds()
+        # Set loop time to 100 ms minus the time it takes the loop to process
         waitTime = 0.1 - loopTime
         firstPass = False
         if loopTime > 0.1:
