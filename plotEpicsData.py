@@ -11,6 +11,37 @@ from datetime import datetime, timedelta
 import collections
 import numpy as np
 import h5py
+import sys
+import re
+
+def extract_h5df(hdf5File, listonly=False):
+    # Create empty arrays for TCS in position time stamp and value
+    recGroups = []
+    print(hdf5File)
+    # Read h5 file
+    posFile = [h5py.File(datafile, 'r') for datafile in hdf5File]
+    # Extract record names and create an array with group object and name of
+    # group
+    for seqData in posFile:
+        recGroups += [[seqData.get(recname),recname] for recname in seqData]
+    print(np.array(recGroups, dtype=object).T[1])
+    if listonly:
+        sys.exit()
+    # Create dictionary with time and process value data
+    print('Generating data dictionary')
+    recData = {name:[np.array(g.get('timestamp')),np.array(g.get('value'))]\
+               for g,name in recGroups}
+    # Reformat timestamp data
+    print('Reformating timestamps')
+    for n in recData:
+        print(n)
+        recTime = [datetime.fromtimestamp(ts) for ts in recData[n][0]]
+        timeStampS = [datetime.strftime(rt, '%m/%d/%Y %H:%M:%S.%f')\
+                      for rt in recTime]
+        timeStamp = [datetime.strptime(ts, '%m/%d/%Y %H:%M:%S.%f')\
+                     for ts in timeStampS]
+        recData[n][0] = timeStamp
+    return recData
 
 def rmsChan(dataSet):
     '''
@@ -429,8 +460,8 @@ class DataAxePlotter:
             Dax[c][bax].bottomax = True
             i += 1
         totCells = lcmArray([ric[c] for c in ric])
-        print('totCells', totCells)
-        print('totCols', i)
+        # print('totCells', totCells)
+        # print('totCols', i)
         self.gs = gridspec.GridSpec(totCells,i)
         for c in Dax:
             for n in Dax[c]:
@@ -456,35 +487,15 @@ class DataAxePlotter:
         plt.show()
 
 if __name__ == '__main__':
-    # plotConfig(ax_lst)
     x = np.arange(21)
     y1 = x**2
     y2 = 50 * (np.sin((3.1415/6) * x))
     y3 = 500 / (x + 1)
-    # plts = collections.OrderedDict()
-    # plts = collections.OrderedDict()
-    # pC1 = collections.OrderedDict()
-    # pC2 = collections.OrderedDict()
-    # plts['g1'] = DataAx('', '', '', pos=[2,1], height=1)
-    # plts['g2'] = DataAx('', '', '', pos=[1,2], height=2)
-    # plts['g3'] = DataAx('', '', '', pos=[3,1], height=4)
-    # pC1['g4'] = DataAx([x,y1], 'r-', 't1', height=5, label='g4')
-    # pC1['g5'] = DataAx([x,y2], 'b--', label='g5', shax='g4')
-    # pC2['g2'] = DataAx([x,((x-10)**2)+40], 'g-', 't4', label='g2', height=2)
-    # pC2['g6'] = DataAx([x,y3], 'k-', 't3', label='g6', height=1)
-    # plts['c1']['g4'] = DataAx([x,y1], 'r-', 't1', shax='g2', pos=[1,2], height=2, label='g4')
-    # plts['c1']['g5'] = DataAx([x,y2], 'b--', label='g5', shax='g2')
-    # plts['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g-', 't4', pos=[1,1], label='g2', height=2)
-    # plts['c2']['g6'] = DataAx([x,y3], 'k-', 't3', shax='g2', pos=[2,2], label='g6', height=1)
     plts = DataAxePlotter(2)
-    print(plts.Axe.keys())
     plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4')
     plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4')
     plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4')
     plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2)
-    #plts['c1'] = pC1
-    # plts['c2'] = pC2
-    # pltAx = DataAxePlotter(plts)
     plts.positionPlot()
     plts.plotConfig()
 
