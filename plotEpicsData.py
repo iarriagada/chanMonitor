@@ -14,33 +14,25 @@ import h5py
 import sys
 import re
 
-def extract_h5df(hdf5File, listonly=False):
+def extract_h5df(hdf5File, stime, etime, listonly=False):
     # Create empty arrays for TCS in position time stamp and value
     recGroups = []
+    recData = {}
     print(hdf5File)
     # Read h5 file
-    posFile = [h5py.File(datafile, 'r') for datafile in hdf5File]
+    data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
     # Extract record names and create an array with group object and name of
     # group
-    for seqData in posFile:
-        recGroups += [[seqData.get(recname),recname] for recname in seqData]
-    print(np.array(recGroups, dtype=object).T[1])
+    for data_group in data_files:
+        for rn in data_group:
+            timestamps = data_group.get(rn).get('timestamp')[0:]
+            ts_index = np.where(np.logical_and(stime<timestamps,
+                                               etime>timestamps))
+            recData[rn] =[timestamps[ts_index],
+                          data_group.get(rn).get('value')[ts_index]]
+    print(recData.keys())
     if listonly:
         sys.exit()
-    # Create dictionary with time and process value data
-    print('Generating data dictionary')
-    recData = {name:[np.array(g.get('timestamp')),np.array(g.get('value'))]\
-               for g,name in recGroups}
-    # Reformat timestamp data
-    print('Reformating timestamps')
-    for n in recData:
-        print(n)
-        recTime = [datetime.fromtimestamp(ts) for ts in recData[n][0]]
-        timeStampS = [datetime.strftime(rt, '%m/%d/%Y %H:%M:%S.%f')\
-                      for rt in recTime]
-        timeStamp = [datetime.strptime(ts, '%m/%d/%Y %H:%M:%S.%f')\
-                     for ts in timeStampS]
-        recData[n][0] = timeStamp
     return recData
 
 def rmsChan(dataSet):
@@ -334,6 +326,7 @@ class DataAx:
         # plotting. If it is prepares an array with the x values.
         if not(self.histbins):
             dataT, dataY = self.data
+            dataT = [datetime.fromtimestamp(ts) for ts in dataT]
         else:
             dataX = self.data
 
@@ -384,7 +377,7 @@ class DataAx:
                     matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
                 self.ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
                 plt.setp(self.ax.get_xticklabels(), fontsize=8,
-                         rotation=30, ha='right')
+                         rotation=25, ha='right')
         # Configure an histogram ax
         else:
             self.bindata, self.bins, self.patches = \
@@ -392,13 +385,11 @@ class DataAx:
                              range=self.limsbins, edgecolor='black',
                              alpha=self.alpha, color=self.color)
 
-            # if not(self.bottomax):
-                # plt.setp(self.ax.get_xticklabels(), fontsize=7, visible=False)
-            # else:
-            self.ax.set_xlabel(self.xlabel, fontsize=9)
+            if self.bottomax:
+                self.ax.set_xlabel(self.xlabel, fontsize=9)
             plt.xticks(self.bins)
             plt.setp(self.ax.get_xticklabels(), fontsize=8,
-                    rotation=30, ha='right')
+                    rotation=35, ha='right')
 
         # Define the plot area style for the ax
         self.ax.grid(True)
