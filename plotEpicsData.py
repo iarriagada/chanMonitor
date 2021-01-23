@@ -134,7 +134,7 @@ def derivData(dataA):
     This function is used to calculate the first derivative of data array
     between consecutive values
     '''
-    diffPV = [(x - xa)/(y - ya).total_seconds() \
+    diffPV = [(x - xa)/(y - ya)\
               for ya,y,xa,x in np.array([dataA[0][:-1], dataA[0][1:],
                                    dataA[1][:-1], dataA[1][1:]]).T]
     diffA = [dataA[0][1:], diffPV]
@@ -147,7 +147,7 @@ def inPosDur(ipArray):
     for t,ip in np.array(ipArray).T:
         if not(ip) and inPos:
             inPos = False
-            ipd.append([t, (t - previpt).total_seconds()])
+            ipd.append([t, (t - previpt)])
         if ip and not(inPos):
             inPos = True
             previpt = t
