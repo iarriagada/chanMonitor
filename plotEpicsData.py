@@ -14,212 +14,6 @@ import h5py
 import sys
 import re
 
-def extract_h5df(hdf5File, stime, etime, listonly=False):
-    # Create empty arrays for TCS in position time stamp and value
-    recGroups = []
-    recData = {}
-    print(hdf5File)
-    # Read h5 file
-    data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
-    # Extract record names and create an array with group object and name of
-    # group
-    for data_group in data_files:
-        for rn in data_group:
-            timestamps = data_group.get(rn).get('timestamp')[0:]
-            ts_index = np.where(np.logical_and(stime<timestamps,
-                                               etime>timestamps))
-            recData[rn] =[timestamps[ts_index],
-                          data_group.get(rn).get('value')[ts_index]]
-    print(recData.keys())
-    if listonly:
-        sys.exit()
-    return recData
-
-def rmsChan(dataSet):
-    '''
-    Calculate the RMS value of a dataset
-
-    Parameters
-    ----------
-    dataSet : array
-        dataSet is a list with two arrays, Process Value data and timestamps of
-        an EPICS channel.
-
-    Returns
-    -------
-    (time, dataRMS) : list with two arrays array with timestamps and RMS value
-    of the EPICS channel process value data
-    '''
-    time, data = zip(*dataSet)
-    ts = time[0]
-    i = 0
-    s = i
-    drms = 0
-    dataRMS = list()
-    for t in time:
-        if (((t - ts) < timedelta(minutes=60)) and not(t == time[len(time)-1])):
-            drms += data[i]**2
-            i += 1
-        else:
-            drms = np.sqrt(drms) / (i - s)
-            auxRMS = [x * drms for x in np.ones((i-s))]
-            dataRMS.extend(auxRMS)
-            ts = time[i]
-            drms = 0
-            s = i - 1
-    return list(zip(time,dataRMS))
-
-def inPosCorr(dataA):
-    dataCR = derivData(dataA)
-    dataCRA = avgData(dataCR, 3)
-    if (abs(dataCRA[1][0])>0.004) and (abs(dataA[1][3])>0.0068):
-        currIP = 0
-    else:
-        currIP = 1
-    corrInPos = [currIP]
-    for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
-        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
-        if ((abs(y)<0.0068) and (abs(dy)<0.004)):
-            currIP = 1
-        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
-        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
-            currIP = 0
-        corrInPos.append(currIP)
-    corrInPosData = [dataA[0][3:],corrInPos]
-    return corrInPosData
-
-def inPosCorrH(dataA):
-    dataCR = derivData(dataA)
-    dataCRA = avgData(dataCR, 3)
-    if (abs(dataCRA[1][0])>0.004) and (abs(dataA[1][3])>0.0068):
-        currIP = 0
-    else:
-        currIP = 1
-    corrInPos = [currIP]
-    for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
-        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
-        if ((abs(y)<0.006) and (abs(dy)<0.0004)):
-            currIP = 1
-        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
-        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
-            currIP = 0
-        corrInPos.append(currIP)
-    corrInPosData = [dataA[0][3:],corrInPos]
-    return corrInPosData
-
-def diffData(dataA):
-    '''
-    This function is used to calculate the differential of the values of an
-    array between consecutive samples
-    '''
-    diffPV = [y - x \
-               for x,y in np.array([dataA[1][:-1],
-                                    dataA[1][1:]]).T]
-    diffA = [dataA[0][1:], diffPV]
-    return diffA
-
-def avgData(dataA, avg):
-    '''
-    This function is used to calculate the moving average of a data array
-    '''
-    # avg = 3
-    avgPV = [np.average(a)\
-             for a in np.array([dataA[1][(avg-1)-x:len(dataA[1])-x]
-                                for x in range(avg)]).T]
-    avgA = [dataA[0][(avg-1):], avgPV]
-    return avgA
-
-def derivData(dataA):
-    '''
-    This function is used to calculate the first derivative of data array
-    between consecutive values
-    '''
-    diffPV = [(x - xa)/(y - ya)\
-              for ya,y,xa,x in np.array([dataA[0][:-1], dataA[0][1:],
-                                   dataA[1][:-1], dataA[1][1:]]).T]
-    diffA = [dataA[0][1:], diffPV]
-    return diffA
-
-def inPosDur(ipArray):
-    inPos = False
-    ipd = list()
-    previpt = ipArray[0][0]
-    for t,ip in np.array(ipArray).T:
-        if not(ip) and inPos:
-            inPos = False
-            ipd.append([t, (t - previpt)])
-        if ip and not(inPos):
-            inPos = True
-            previpt = t
-    return np.array(ipd).T
-
-def offsetZones(offsetArray, zcolor):
-    zeroFlag = False
-    offsetPA = []
-    offsetNA = []
-    for t,ov in np.array(offsetArray).T:
-        if not(ov) and zeroFlag:
-            zeroFlag = False
-            offsetPA.append(t)
-        if ov and not(zeroFlag):
-            zeroFlag = True
-            offsetNA.append(t)
-    if len(offsetNA) > len(offsetPA):
-        offsetNA = offsetNA[:-1]
-    zonecolor = [zcolor for i in range(len(offsetPA))]
-    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
-    offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
-    return offsetZonesArray
-
-def ipZones(offsetArray, zcolor):
-    zeroFlag = False
-    offsetPA = []
-    offsetNA = []
-    for t,ov in np.array(offsetArray).T:
-        if ov and zeroFlag:
-            zeroFlag = False
-            offsetPA.append(t)
-        if not(ov) and not(zeroFlag):
-            zeroFlag = True
-            offsetNA.append(t)
-    if len(offsetNA) > len(offsetPA):
-        offsetNA = offsetNA[:-1]
-    zonecolor = [zcolor for i in range(len(offsetPA))]
-    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
-    offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
-    return offsetZonesArray
-
-def gcd(a,b):
-    '''
-    gcd() calculates the greatest common denominator
-    '''
-    c = a % b
-    if not(c):
-        return b
-    b = gcd(b,c)
-    return b
-
-def lcm(a,b):
-    '''
-    lcm() calculates the least common multiple between two numbers
-    '''
-    c = gcd(a,b)
-    d = (a/c) * b
-    return d
-
-def lcmArray(a):
-    '''
-    lcm() calculates the least common multiple between two or more numbers
-    '''
-    if len(a) == 1:
-        return int(a[0])
-    r = lcm(a[0],a[1])
-    if len(a) == 2:
-        return int(r)
-    b = [r] + a[2:]
-    r = lcmArray(b)
-    return int(r)
-
 class DataAx:
     '''
     This class defines a plot object
@@ -476,6 +270,223 @@ class DataAxePlotter:
         plt.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.95,
                             hspace=0.20, wspace=0.2)
         plt.show()
+
+def extract_h5df(hdf5File, stime, etime, listonly=False):
+    # Create empty arrays for TCS in position time stamp and value
+    recGroups = []
+    recData = {}
+    print(hdf5File)
+    # Read h5 file
+    data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
+    # Extract record names and create an array with group object and name of
+    # group
+    for data_group in data_files:
+        for rn in data_group:
+            timestamps = data_group.get(rn).get('timestamp')[0:]
+            ts_index = np.where(np.logical_and(stime<timestamps,
+                                               etime>timestamps))
+            recData[rn] =[timestamps[ts_index],
+                          data_group.get(rn).get('value')[ts_index]]
+    print(recData.keys())
+    if listonly:
+        sys.exit()
+    return recData
+
+def rmsChan(dataSet):
+    '''
+    Calculate the RMS value of a dataset
+
+    Parameters
+    ----------
+    dataSet : array
+        dataSet is a list with two arrays, Process Value data and timestamps of
+        an EPICS channel.
+
+    Returns
+    -------
+    (time, dataRMS) : list with two arrays array with timestamps and RMS value
+    of the EPICS channel process value data
+    '''
+    time, data = zip(*dataSet)
+    ts = time[0]
+    i = 0
+    s = i
+    drms = 0
+    dataRMS = list()
+    for t in time:
+        if (((t - ts) < timedelta(minutes=60)) and not(t == time[len(time)-1])):
+            drms += data[i]**2
+            i += 1
+        else:
+            drms = np.sqrt(drms) / (i - s)
+            auxRMS = [x * drms for x in np.ones((i-s))]
+            dataRMS.extend(auxRMS)
+            ts = time[i]
+            drms = 0
+            s = i - 1
+    return list(zip(time,dataRMS))
+
+def inPosCorr(dataA):
+    dataCR = derivData(dataA)
+    dataCRA = avgData(dataCR, 3)
+    if (abs(dataCRA[1][0])>0.004) and (abs(dataA[1][3])>0.0068):
+        currIP = 0
+    else:
+        currIP = 1
+    corrInPos = [currIP]
+    for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
+        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
+        if ((abs(y)<0.0068) and (abs(dy)<0.004)):
+            currIP = 1
+        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
+        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
+            currIP = 0
+        corrInPos.append(currIP)
+    corrInPosData = [dataA[0][3:],corrInPos]
+    return corrInPosData
+
+def inPosCorrH(dataA):
+    dataCR = derivData(dataA)
+    dataCRA = avgData(dataCR, 3)
+    if (abs(dataCRA[1][0])>0.004) and (abs(dataA[1][3])>0.0068):
+        currIP = 0
+    else:
+        currIP = 1
+    corrInPos = [currIP]
+    for y,dy in np.array([dataA[1][4:],dataCRA[1][1:]]).T:
+        # if ((abs(y)<0.0068) and (abs(dy)<0.004) and not(currIP)):
+        if ((abs(y)<0.006) and (abs(dy)<0.0004)):
+            currIP = 1
+        # elif ((abs(y)>0.0068) and (abs(dy)>0.004) and currIP):
+        elif ((abs(y)>0.0068) and (abs(dy)>0.004)):
+            currIP = 0
+        corrInPos.append(currIP)
+    corrInPosData = [dataA[0][3:],corrInPos]
+    return corrInPosData
+
+def diffData(dataA):
+    '''
+    This function is used to calculate the differential of the values of an
+    array between consecutive samples
+    '''
+    diffPV = [y - x \
+               for x,y in np.array([dataA[1][:-1],
+                                    dataA[1][1:]]).T]
+    diffA = [dataA[0][1:], np.array(diffPV)]
+    return diffA
+
+def avgData(dataA, avg):
+    '''
+    This function is used to calculate the moving average of a data array
+    '''
+    # avg = 3
+    avgPV = [np.average(a)\
+             for a in np.array([dataA[1][(avg-1)-x:len(dataA[1])-x]
+                                for x in range(avg)]).T]
+    avgA = [dataA[0][(avg-1):], np.array(avgPV)]
+    return avgA
+
+def derivData(dataA):
+    '''
+    This function is used to calculate the first derivative of data array
+    between consecutive values
+    '''
+    diffPV = [(x - xa)/(y - ya)\
+              for ya,y,xa,x in np.array([dataA[0][:-1], dataA[0][1:],
+                                   dataA[1][:-1], dataA[1][1:]]).T]
+    diffA = [dataA[0][1:], np.array(diffPV)]
+    return diffA
+
+def inPosDur(ipArray):
+    inPos = False
+    ipd = list()
+    previpt = ipArray[0][0]
+    for t,ip in np.array(ipArray).T:
+        if not(ip) and inPos:
+            inPos = False
+            ipd.append([t, (t - previpt)])
+        if ip and not(inPos):
+            inPos = True
+            previpt = t
+    return np.array(ipd).T
+
+def offsetZones(offsetArray, zcolor):
+    zeroFlag = False
+    offsetPA = []
+    offsetNA = []
+    for t,ov in np.array(offsetArray).T:
+        if not(ov) and zeroFlag:
+            zeroFlag = False
+            offsetPA.append(t)
+        if ov and not(zeroFlag):
+            zeroFlag = True
+            offsetNA.append(t)
+    if len(offsetNA) > len(offsetPA):
+        offsetNA = offsetNA[:-1]
+    zonecolor = [zcolor for i in range(len(offsetPA))]
+    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
+    offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
+    return offsetZonesArray
+
+def ipZones(offsetArray, zcolor):
+    zeroFlag = False
+    offsetPA = []
+    offsetNA = []
+    for t,ov in np.array(offsetArray).T:
+        if ov and zeroFlag:
+            zeroFlag = False
+            offsetPA.append(t)
+        if not(ov) and not(zeroFlag):
+            zeroFlag = True
+            offsetNA.append(t)
+    if len(offsetNA) > len(offsetPA):
+        offsetNA = offsetNA[:-1]
+    zonecolor = [zcolor for i in range(len(offsetPA))]
+    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
+    offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
+    return offsetZonesArray
+
+def gcd(a,b):
+    '''
+    gcd() calculates the greatest common denominator
+    '''
+    c = a % b
+    if not(c):
+        return b
+    b = gcd(b,c)
+    return b
+
+def lcm(a,b):
+    '''
+    lcm() calculates the least common multiple between two numbers
+    '''
+    c = gcd(a,b)
+    d = (a/c) * b
+    return d
+
+def lcmArray(a):
+    '''
+    lcm() calculates the least common multiple between two or more numbers
+    '''
+    if len(a) == 1:
+        return int(a[0])
+    r = lcm(a[0],a[1])
+    if len(a) == 2:
+        return int(r)
+    b = [r] + a[2:]
+    r = lcmArray(b)
+    return int(r)
+
+def filter_outliers(data, low_lim, high_lim):
+    '''
+    filter_outliers() filters a numpy array according to low and high limits.
+    It generates two arrays, one with data within the limits, the other with the
+    outliers.
+    '''
+    filt_mask = (low_lim<data[1]) & (data[1]<high_lim)
+    filtered_data = [data[0][filt_mask], data[1][filt_mask]]
+    outlier_data = [data[0][~filt_mask], data[1][~filt_mask]]
+    return filtered_data, outlier_data
 
 if __name__ == '__main__':
     x = np.arange(21)

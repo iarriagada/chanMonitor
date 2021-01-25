@@ -2,6 +2,7 @@
 
 from plotEpicsData import DataAx, DataAxePlotter
 from datetime import datetime
+import numpy as np
 import plotEpicsData as ped
 import argparse
 import sys
@@ -77,13 +78,19 @@ if __name__ == '__main__':
     recData = ped.extract_h5df(args.hdf5File, stime, etime,  args.list_chan)
 
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
-                 [e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]]]
+                 np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
     tc1_VALA_0 = [recData['tcs:drives:driveCRS.VALA'][0],
                  [e[0] for e in recData['tcs:drives:driveCRS.VALA'][1]]]
     mcs_j_VALA_0 = [recData['mc:followA.J'][0],
                  [e[0] for e in recData['mc:followA.J'][1]]]
     mcs_dmd_diff = ped.diffData(mcs_j_VALA_0)
     cr_dmd_val0_diff = ped.diffData(tc1_VALA_0)
+    tc_diff_norm, tc_diff_outl = ped.filter_outliers(tc1_VALI_4,
+                                                     0.00,
+                                                     0.22)
+    mc_diff_norm, mc_diff_outl = ped.filter_outliers(mcs_dmd_diff,
+                                                     0.00,
+                                                     0.22)
 
 
     ylim_ta = (-0.0001, 0.001)
@@ -92,52 +99,105 @@ if __name__ == '__main__':
 
     plts = DataAxePlotter(ncols=2)
 
-    plts.Axe['c1']['mcsA[0]diff'] = DataAx(tc1_VALI_4,
+    # plts.Axe['c1']['mcsA[0]diff'] = DataAx(tc1_VALI_4,
+                                        # 'g',
+                                           # height=2,
+                                            # linestyle='',
+                                            # marker='o',
+                                           # ylims=ylim_dr_mcs,
+                                        # label='tc1 -> mcs loop time diff',
+                                        # ylabel="Difference\n[sec]",
+                                        # linewidth=2.50)
+
+    # plts.Axe['c1']['crcs[0]diff'] = DataAx(cr_dmd_val0_diff,
+                                        # 'b',
+                                           # height=2,
+                                            # linestyle='',
+                                            # marker='o',
+                                           # ylims=ylim_dr_crcs,
+                                        # label='tc1 -> cr loop time diff',
+                                        # ylabel="Difference\n[sec]",
+                                        # linewidth=2.50)
+
+    plts.Axe['c1']['tcdmd_diff'] = DataAx(tc_diff_norm,
                                         'g',
                                             linestyle='',
                                             marker='o',
-                                           ylims=ylim_dr_mcs,
-                                        label='tc1 -> mcs loop time diff',
+                                        label='tc/mc tx time diff',
                                         ylabel="Difference\n[sec]",
                                         linewidth=2.50)
+                                           # ylims=ylim_dr_mcs,
 
-    plts.Axe['c1']['crcs[0]diff'] = DataAx(cr_dmd_val0_diff,
-                                        'b',
-                                            linestyle='',
-                                            marker='o',
-                                           ylims=ylim_dr_crcs,
-                                        label='tc1 -> cr loop time diff',
-                                        ylabel="Difference\n[sec]",
-                                        linewidth=2.50)
-
-    plts.Axe['c1']['mc_dmd_diff'] = DataAx(mcs_dmd_diff,
+    plts.Axe['c1']['tcdmd_diff_outl'] = DataAx(tc_diff_outl,
                                         'r',
                                             linestyle='',
                                             marker='o',
-                                           ylims=ylim_dr_mcs,
+                                        label='tc/mc tx time diff outl',
+                                        ylabel="Difference\n[sec]",
+                                        linewidth=2.50)
+                                           # ylims=ylim_dr_mcs,
+
+    plts.Axe['c1']['mcdmd_diff'] = DataAx(mc_diff_norm,
+                                        'b',
+                                            linestyle='',
+                                            marker='o',
                                         label='mcs reception time diff',
                                         ylabel="Difference\n[sec]",
                                         linewidth=2.50)
+                                           # ylims=ylim_dr_mcs,
 
-    plts.Axe['c2']['mcs_diff_hist'] = DataAx(tc1_VALI_4[1],
-                                        'g',
-                                        label='tc1 -> mcs histogram time diff',
-                                        ylabel="No Samples\n[un]",
-                                        xlabel="Time diff [sec]",
-                                              histbins=30,
-                                        linewidth=2.50)
-
-    plts.Axe['c2']['crcs_diff_hist'] = DataAx(cr_dmd_val0_diff[1],
-                                        'b',
-                                        label='tc1 -> cr histogram time diff',
-                                        ylabel="No Samples\n[un]",
-                                        xlabel="Time diff [sec]",
-                                              histbins=30,
-                                        linewidth=2.50)
-
-    plts.Axe['c2']['mcs_dmd_diff_hist'] = DataAx(mcs_dmd_diff[1],
+    plts.Axe['c1']['mcdmd_diff_outl'] = DataAx(mc_diff_outl,
                                         'r',
-                                        label='mcs reception histogram time diff',
+                                            linestyle='',
+                                            marker='o',
+                                        label='mcs rx time diff outl',
+                                        ylabel="Difference\n[sec]",
+                                        linewidth=2.50)
+                                           # ylims=ylim_dr_mcs,
+
+    # plts.Axe['c2']['mcs_diff_hist'] = DataAx(tc1_VALI_4[1],
+                                        # 'g',
+                                        # label='tc1 -> mcs histogram time diff',
+                                        # ylabel="No Samples\n[un]",
+                                        # xlabel="Time diff [sec]",
+                                              # histbins=30,
+                                        # linewidth=2.50)
+
+    # plts.Axe['c2']['crcs_diff_hist'] = DataAx(cr_dmd_val0_diff[1],
+                                        # 'b',
+                                        # label='tc1 -> cr histogram time diff',
+                                        # ylabel="No Samples\n[un]",
+                                        # xlabel="Time diff [sec]",
+                                              # histbins=30,
+                                        # linewidth=2.50)
+
+    plts.Axe['c2']['tcdmd_diff_hist'] = DataAx(tc_diff_norm[1],
+                                        'g',
+                                        label='tc/mc tx time diff hist',
+                                        ylabel="No Samples\n[un]",
+                                        xlabel="Time diff [sec]",
+                                              histbins=30,
+                                        linewidth=2.50)
+
+    plts.Axe['c2']['tcdmd_diff_outl_hist'] = DataAx(tc_diff_outl[1],
+                                        'r',
+                                        label='tc/mc tx time diff outl hist',
+                                        ylabel="No Samples\n[un]",
+                                        xlabel="Time diff [sec]",
+                                              histbins=30,
+                                        linewidth=2.50)
+
+    plts.Axe['c2']['mcdmd_diff_hist'] = DataAx(mc_diff_norm[1],
+                                        'b',
+                                        label='mcs rx time diff hist',
+                                        ylabel="No Samples\n[un]",
+                                        xlabel="Time diff [sec]",
+                                              histbins=30,
+                                        linewidth=2.50)
+
+    plts.Axe['c2']['mcdmd_diff_outl_hist'] = DataAx(mc_diff_outl[1],
+                                        'r',
+                                        label='mcs rx time diff outl hist',
                                         ylabel="No Samples\n[un]",
                                         xlabel="Time diff [sec]",
                                               histbins=30,
@@ -156,41 +216,6 @@ if __name__ == '__main__':
                                       # shax='ta_tc1',
                                         # ylabel="Difference\n[sec]",
                                         # linewidth=1.50)
-
-    # # pC1['topsDPos'] = DataAx(tsCorrDmd,
-                        # # 'r', "Position\n[deg]",
-                        # # label='Top Shut Demand',
-                        # # drawstyle='steps-post',
-                        # # shax='botsDPos')
-
-    # # pC1['topsPos'] = DataAx(tsCorrPos,
-                        # # 'm-', "Position\n[deg]",
-                        # # label='Top Shut Position',
-                        # # linewidth=2.50,
-                        # # shax='botsDPos')
-
-    # # # pC1['botShtrHLS'] = DataAx(recData['ec:botShtrmotor.HLS'],
-                        # # # 'r', "Accum State\n[un]",
-                        # # # label='BS HL Switch',
-                        # # # linewidth=2.50,
-                        # # # ylims=(-0.5,3),
-                        # # # drawstyle='steps-post')
-
-    # plts.Axe['c1']['botsPos'] = DataAx(recData['ec:fault:word16:bits.B6'],
-                                        # 'k',
-                                        # drawstyle='steps-post',
-                                        # label='Slow Speed, Bit 6',
-                                        # ylabel="Switch State\n[bool]",
-                                        # linewidth=2.50,
-                                        # ylims=ylimsOFF)
-
-    # # pC1['LSbit7'] = DataAx(recData['ec:fault:word16:bits.B7'],
-                        # # 'g', "Switch State\n[bool]",
-                        # # label='End-of-travel, Bit 7',
-                        # # linewidth=2.50,
-                        # # ylims=ylimsOFF,
-                        # # drawstyle='steps-post')
-
 
     plts.positionPlot()
     plts.plotConfig('Fast Track Analysis')
