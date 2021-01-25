@@ -106,6 +106,9 @@ def monChan(chanNames, frm):
     chanString = []
     # Go through EPICS channel names in array and initializes PV object
     for cn in chanNames:
+        if cn in cnameList:
+            print('{} repeated in the list'.format(cn))
+            continue
         conn_ctr = 1 # Connection counter
         print("Connecting to {}...".format(cn))
         # Go into connection loop
@@ -172,7 +175,7 @@ def caRealTimeCap(args):
     if not(recInfo[0]):
         sys.exit('No channels connected, aborting')
     # Create Dictionary for each EPICS Record data
-    recDic = {name:[[],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
+    recDic = {name:[[False],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True # First data value capture flag
     loopcnt = 0
     # Start "abort data capture" thread
@@ -181,17 +184,27 @@ def caRealTimeCap(args):
     while (((currTime - startTime) < dataCapDur) and run_flag[0]):
         startWhile = datetime.now()
         for name in recInfo[1]:
-            if firstPass or not(float(recDic[name][2].timestamp)
-                                == float(recDic[name][0][-1])):
-                # Check if value is a string and store it in array with proper
-                # data type
-                if (recDic[name][3]):
-                    recDic[name][1] = np.append(recDic[name][1],
-                                                np.array(recDic[name][2].value,
-                                                        dtype='S32'))
-                else:
-                    recDic[name][1].append(recDic[name][2].value)
-                recDic[name][0].append(recDic[name][2].timestamp)
+            # Get timestamp
+            timestamp = recDic[name][2].timestamp
+            # Compare timestamp with previous timestamp, skip to next channel
+            # if equal
+            if timestamp == float(recDic[name][0][-1]):
+                continue
+            # Append timestamp to array
+            recDic[name][0].append(timestamp)
+            # if it's the first pass, rewrite first value (False)
+            if firstPass:
+                recDic[name][0]=[timestamp]
+                firstPass = False
+            # Store channel value
+            value = recDic[name][2].value
+            # if value is not a string, append value in array and continue with
+            # next channel
+            if not(recDic[name][3]):
+                recDic[name][1].append(value)
+                continue
+            recDic[name][1] = np.append(recDic[name][1],
+                                        np.array(value, dtype='S32'))
         loopcnt += 1
         currTime = datetime.now()
         loopTime = (currTime - startWhile).total_seconds()
