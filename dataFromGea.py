@@ -31,7 +31,7 @@ gea_xml_server = {
 
 time_zone = {
     'gs':3,
-    'gn':0
+    'gn':3
 }
 
 def geaExtractor(record, startDate, endDate, site='gs'):
@@ -62,9 +62,15 @@ def geaExtractor(record, startDate, endDate, site='gs'):
     # Get the list of archivers available
     geaDict = {al['name']:al['key'] for al in gea.archiver.archives()}
     # Check to see if the record is being archived, if not, return False
-    if not(gea.archiver.names(geaDict[archiver], record)):
-        print('Channels {} is not being archived'.format(record))
+    try:
+        if not(gea.archiver.names(geaDict[archiver], record)):
+            print('Channels {} is not being archived'.format(record))
+            return False
+    except Exception as error:
+        print("\nConnection with server {} failed".format(gea_xml_server[site]))
+        print("with error: {}".format(error))
         return False
+
     print('Extracting', record)
     sys.stdout.write('\r' + 'Progress: 0.00%')
     try:
