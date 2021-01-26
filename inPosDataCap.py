@@ -33,6 +33,10 @@ def parse_args():
 
     parser_gea.set_defaults(func=geaExtraction)
 
+    parser_gea.add_argument('site',
+                            metavar='SITE',
+                            help='Site from which to extract the data. {gs, gn}')
+
     parser_gea.add_argument('recFileG',
                             metavar='REC-FILE',
                             help='path to text file with records to be monitored')
@@ -47,8 +51,8 @@ def parse_args():
                             '--recname',
                             dest='rn',
                             action='store_true',
-                            help='Use this option to get data from single Epics\
-                            record')
+                            help='Replace file path with the name of a single\
+                            EPICS record')
 
     # Define real time data capture using Channel access
     parser_ca = subparser.add_parser('ca',
@@ -144,6 +148,7 @@ def createH5F(fname, rInfo, rDic):
     for g in groupsHF:
         g[0].create_dataset('timestamp', data=rDic[g[1]][0])
         g[0].create_dataset('value', data=rDic[g[1]][1])
+    print('Data capture complete with file: {}'.format(fname))
 
 def on_press_thread(run_flag):
     key_press = input()
@@ -217,7 +222,6 @@ def caRealTimeCap(args):
         time.sleep(waitTime)
 
     createH5F(fileName, recInfo[1], recDic)
-    print('Data capture complete with file: {}'.format(fileName))
 
 def geaExtraction(args):
     # args = parse_args() # capture the input arguments
@@ -232,13 +236,19 @@ def geaExtraction(args):
     else:
         recList = [args.recFileG]
     recDic = {name:[[],[]] for name in recList}
+    chan_count = 0
     for recname in recList:
-        print('Extracting', recname)
-        recDataT = geaExtractor(recname, args.tw[0], args.tw[1])
+        # print('Extracting', recname)
+        recDataT = geaExtractor(recname, args.tw[0], args.tw[1], args.site)
+        if not(recDataT):
+            continue
         recData = np.array(recDataT).T
         recDic[recname][0] = recData[0]
         recDic[recname][1] = recData[1]
+        chan_count += 1
 
+    if not(chan_count):
+        sys.exit('No channels were extracted')
     createH5F(fileName, recList, recDic)
 
 if __name__ == '__main__':
