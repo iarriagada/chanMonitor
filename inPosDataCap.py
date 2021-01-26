@@ -11,7 +11,7 @@ import numpy as np
 import _thread
 
 from datetime import datetime, timedelta
-from dataFromGea import geaKeys, geaExtractor
+from dataFromGea import geaExtractor
 
 STATUS_STR = 'not connected'
 
@@ -44,8 +44,8 @@ def parse_args():
     parser_gea.add_argument('tw',
                             nargs=2,
                             help='Time window for data extraction\
-                            e.g.: "2019-11-21 02:00:00"\
-                            "2019-11-22 03:00:00"')
+                            e.g.: "191121T020000"\
+                            "191122T030000"')
 
     parser_gea.add_argument('-rn',
                             '--recname',
@@ -224,7 +224,6 @@ def caRealTimeCap(args):
     createH5F(fileName, recInfo[1], recDic)
 
 def geaExtraction(args):
-    # args = parse_args() # capture the input arguments
     startTime = datetime.now() # starting time of the capture
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
     fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
@@ -237,9 +236,16 @@ def geaExtraction(args):
         recList = [args.recFileG]
     recDic = {name:[[],[]] for name in recList}
     chan_count = 0
+    # Format the start and end date as datetime objects, with the specified
+    # format
+    try:
+        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M%S')
+        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M%S')
+    except ValueError as err:
+        print("ValueError timewindow: {}".format(err))
+        sys.exit()
     for recname in recList:
-        # print('Extracting', recname)
-        recDataT = geaExtractor(recname, args.tw[0], args.tw[1], args.site)
+        recDataT = geaExtractor(recname, startDate, endDate, args.site)
         if not(recDataT):
             continue
         recData = np.array(recDataT).T

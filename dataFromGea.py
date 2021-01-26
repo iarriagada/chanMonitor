@@ -34,7 +34,7 @@ time_zone = {
     'gn':3
 }
 
-def geaExtractor(record, startDate, endDate, site='gs'):
+def geaExtractor(record, ts, te, site='gs'):
     '''
     This method is used to extract data from GEA.
     It uses the name of the record to determine the archiver to be used
@@ -43,10 +43,6 @@ def geaExtractor(record, startDate, endDate, site='gs'):
     # Get IOC top from the name of the record, then look in the GEA keyword
     # dictionary
     archiver = geaKeys[record.split(':')[0]]
-    # Format the start and end date as datetime objects, with the specified
-    # format
-    ts = datetime.strptime(startDate, '%Y-%m-%d %H:%M:%S')
-    te = datetime.strptime(endDate, '%Y-%m-%d %H:%M:%S')
     # Define the timedelta to switch date to UTC and define a delta of 15
     # minutes to get data from GEA
     td = timedelta(hours=time_zone[site])
