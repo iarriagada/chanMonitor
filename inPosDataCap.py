@@ -200,7 +200,7 @@ def caRealTimeCap(args):
             # if it's the first pass, rewrite first value (False)
             if firstPass:
                 recDic[name][0]=[timestamp]
-                firstPass = False
+                # firstPass = False
             # Store channel value
             value = recDic[name][2].value
             # if value is not a string, append value in array and continue with

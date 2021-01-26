@@ -75,7 +75,7 @@ if __name__ == '__main__':
     if etime < stime:
         sys.exit("End time can't be earlier than start time")
     # Read h5 file
-    recData = ped.extract_h5df(args.hdf5File, stime, etime,  args.list_chan)
+    recData = ped.extract_h5df(args.hdf5File, stime, etime, args.list_chan)
 
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
                  np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]

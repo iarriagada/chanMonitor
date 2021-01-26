@@ -282,11 +282,19 @@ def extract_h5df(hdf5File, stime, etime, listonly=False):
     # group
     for data_group in data_files:
         for rn in data_group:
+            print(rn)
             timestamps = data_group.get(rn).get('timestamp')[0:]
-            ts_index = np.where(np.logical_and(stime<timestamps,
-                                               etime>timestamps))
-            recData[rn] =[timestamps[ts_index],
-                          data_group.get(rn).get('value')[ts_index]]
+            values = data_group.get(rn).get('value')[0:]
+            filt_mask = (stime<timestamps) & (timestamps<etime)
+            print(filt_mask.shape)
+            print(data_group.get(rn).get('value'))
+            print(data_group.get(rn).get('timestamp'))
+            # ts_index = np.where(np.logical_and(stime<timestamps,
+                                               # etime>timestamps))
+            # recData[rn] =[timestamps[filt_mask],
+                          # data_group.get(rn).get('value')[filt_mask]]
+            recData[rn] =[timestamps[filt_mask],
+                          values[filt_mask]]
     print(recData.keys())
     if listonly:
         sys.exit()
