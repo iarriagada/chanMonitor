@@ -227,7 +227,8 @@ def geaExtraction(args):
     print(args.tw)
     if not(args.rn):
         with open(args.recFileG, 'r') as f:
-            recList = f.read().splitlines()
+            recList = [l.split('#')[0].strip()
+                       for l in f.read().splitlines() if l.split('#')[0]]
     else:
         recList = [args.recFileG]
     recDic = {name:[[],[]] for name in recList}
