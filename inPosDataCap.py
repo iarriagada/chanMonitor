@@ -90,7 +90,8 @@ def parse_args():
                            '--starttime',
                            dest='sttime',
                            default='',
-                           help='User defined start time of data capture')
+                           help='User defined start time of data capture.\
+                           Format yymmddThhmm')
 
     parser_ca.add_argument('-tc',
                            '--timecapture',
@@ -160,7 +161,7 @@ def caRealTimeCap(args):
     run_flag = [True]
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
-        startTime = datetime.strptime(args.sttime, '%Y-%m-%d %H:%M:%S')
+        startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
     while datetime.now() < startTime:
         time.sleep(1)
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
@@ -180,7 +181,7 @@ def caRealTimeCap(args):
     if not(recInfo[0]):
         sys.exit('No channels connected, aborting')
     # Create Dictionary for each EPICS Record data
-    recDic = {name:[[False],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
+    recDic = {name:[[True],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
     firstPass = True # First data value capture flag
     loopcnt = 0
     # Start "abort data capture" thread
@@ -193,14 +194,13 @@ def caRealTimeCap(args):
             timestamp = recDic[name][2].timestamp
             # Compare timestamp with previous timestamp, skip to next channel
             # if equal
-            if timestamp == float(recDic[name][0][-1]):
+            if timestamp == recDic[name][0][-1]:
                 continue
             # Append timestamp to array
             recDic[name][0].append(timestamp)
-            # if it's the first pass, rewrite first value (False)
+            # if it's the first pass, reinitialize array with first timestamp
             if firstPass:
                 recDic[name][0]=[timestamp]
-                # firstPass = False
             # Store channel value
             value = recDic[name][2].value
             # if value is not a string, append value in array and continue with
@@ -215,6 +215,8 @@ def caRealTimeCap(args):
         loopTime = (currTime - startWhile).total_seconds()
         # Set loop time to 100 ms minus the time it takes the loop to process
         waitTime = 0.1 - loopTime
+        # Set first pass flag to false, this will only matter after the first
+        # cycle through the channels
         firstPass = False
         if loopTime > 0.1:
             print("Loop {1} took too long: {0} [s]".format(loopTime, loopcnt))
