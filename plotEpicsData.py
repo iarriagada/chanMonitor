@@ -288,17 +288,62 @@ class DataAxePlotter:
 
 # DataAxePlotter class end
 
-def extract_h5df(hdf5File, stime, etime, listonly=False):
+def extract_hdf5(hdf5File, channel_mask=None,
+                 start_time=None, end_time=None, listonly=False):
+    # Handle the start and end times
+    if start_time:
+        try:
+            stime_dt = datetime.strptime(start_time, '%y%m%dT%H%M')
+            stime = datetime.timestamp(stime_dt)
+
+        except ValueError as err:
+            print("ValueError --starttime: {}".format(err))
+            sys.exit()
+    else:
+        stime = 0
+    if end_time:
+        try:
+            etime_dt = datetime.strptime(end_time, '%y%m%dT%H%M')
+            etime = datetime.timestamp(etime_dt)
+
+        except ValueError as err:
+            print("ValueError --endtime: {}".format(err))
+            sys.exit()
+    else:
+        etime = datetime.timestamp(datetime.now())
+
+    if etime < stime:
+        sys.exit("End time can't be earlier than start time")
     # Create empty arrays for TCS in position time stamp and value
     recGroups = []
     recData = {}
+    channel_list = []
     print(hdf5File)
     # Read h5 file
     data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
+    # If channel mask not defined, make the mask be every channel in the data
+    # set
+
+    # Generate list with all channels in dataset
+    for data_group in data_files:
+        for cn in data_group:
+            channel_list.append(cn)
+    # If mask is defined, abort execution if channel from mask is missing from
+    # channel list. If mask is not defined, make it the same as channel list
+    if channel_mask:
+        for chan in channel_mask:
+            if not(chan in channel_list):
+                sys.exit('{} is missing from the dataset'.format(chan))
+    else:
+        channel_mask = channel_list
+
     # Extract record names and create an array with group object and name of
     # group
     for data_group in data_files:
         for rn in data_group:
+            # Check to see if data name is in channel mask, if not, skip it
+            if not(rn in channel_mask):
+                continue
             timestamps = data_group.get(rn).get('timestamp')[0:]
             values = data_group.get(rn).get('value')[0:]
             # Define a mask for timestamps inside data range
@@ -312,10 +357,18 @@ def extract_h5df(hdf5File, stime, etime, listonly=False):
                 recData[rn] =[timestamps[filt_mask[1:]],
                               values[filt_mask[1:]]]
 
-    print(recData.keys())
-    if listonly:
-        sys.exit()
+    # print(recData.keys())
     return recData
+
+def list_hdf5(hdf5File):
+    # Read h5 file
+    data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
+    # Extract record names and create an array with group object and name of
+    # group
+    print('Channels in Dataset:')
+    for data_group in data_files:
+        for rn in data_group:
+            print(rn)
 
 def rmsChan(dataSet):
     '''

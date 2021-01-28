@@ -51,31 +51,14 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    if args.stime:
-        try:
-            stime_dt = datetime.strptime(args.stime, '%y%m%dT%H%M')
-            stime = datetime.timestamp(stime_dt)
-
-        except ValueError as err:
-            print("ValueError --starttime: {}".format(err))
-            sys.exit()
-    else:
-        stime = 0
-    if args.etime:
-        try:
-            etime_dt = datetime.strptime(args.etime, '%y%m%dT%H%M')
-            etime = datetime.timestamp(etime_dt)
-
-        except ValueError as err:
-            print("ValueError --endtime: {}".format(err))
-            sys.exit()
-    else:
-        etime = datetime.timestamp(datetime.now())
-
-    if etime < stime:
-        sys.exit("End time can't be earlier than start time")
+    if args.list_chan:
+        ped.list_hdf5(args.hdf5File)
+        sys.exit()
     # Read h5 file
-    recData = ped.extract_h5df(args.hdf5File, stime, etime, args.list_chan)
+    recData = ped.extract_hdf5(args.hdf5File,
+                               args.stime,
+                               args.etime,
+                               args.list_chan)
 
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
                  np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
@@ -126,6 +109,7 @@ if __name__ == '__main__':
     lim_bin_ta = (0, 6)
     lim_bin_ta_out = (np.amin(ta_min_array), np.amax(ta_max_array))
 
+    # if 'mc:azDemandPos' in recData.keys():
     mc_azDmd = DataAx(recData['mc:azDemandPos'],
                       'xkcd:grass green',
                       label='mc:azDemandPos',
