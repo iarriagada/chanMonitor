@@ -244,8 +244,7 @@ def geaExtraction(args):
         startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M%S')
         endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M%S')
     except ValueError as err:
-        print("ValueError timewindow: {}".format(err))
-        sys.exit()
+        sys.exit("ValueError timewindow: {}".format(err))
     for recname in recList:
         recDataT = geaExtractor(recname, startDate, endDate, args.site)
         if not(recDataT):

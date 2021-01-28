@@ -2,7 +2,7 @@
 *.h5
 
 # Ignore all input txt files
-*.txt
+#*.txt
 
 # Ignore all image files
 *.png

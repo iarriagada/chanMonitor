@@ -57,8 +57,8 @@ class DataAx:
 
     def __init__(self, data, color, linestyle='-', marker=None,
                  drawstyle='default', label=None, ylabel='',
-                 xlabel='', ylims=[], shax=None, height=1,
-                 errorline=[], zone=[], alpha=1.0,
+                 xlabel='', ylims=[], shax=None, height=1, marksize=5,
+                 errorline=[], zone=[], alpha=1.0, ticklabels=False,
                  linewidth=1.25, histbins=False, limsbins=None):
         '''
         Creates the plot object
@@ -83,12 +83,14 @@ class DataAx:
         self.color = color
         self.linestyle = linestyle
         self.marker = marker
+        self.marksize = marksize
         self.drawstyle = drawstyle
         self.lwidth = linewidth
         self.alpha = alpha
         self.label = label
         self.histbins = histbins
         self.limsbins = limsbins
+        self.ticklabels = ticklabels
         self.bindata = False
         self.bins = False
         self.patches = False
@@ -97,9 +99,9 @@ class DataAx:
     def plot_ax(self, gs, tcells, rows, masterax):
         ''' plot_ax
 
-        This method defines each axe to be plotted. It will prepare each ax
-        depending if is a regular plot or a histogram
-        It places each ax within the gridspace, and defines all its
+        This method defines each pair of axe to be plotted. It will prepare each
+        axe set depending if is a regular plot or a histogram.
+        It places each axe pair within the gridspace, and set all its
         characteristics
         '''
         if not(self.histbins):
@@ -129,10 +131,14 @@ class DataAx:
 
         # Configures each axe for plotting
         if not(self.histbins):
-            self.ax.plot(dataT, dataY, linestyle=self.linestyle,
+            l = self.ax.plot(dataT, dataY, linestyle=self.linestyle,
                          linewidth=self.lwidth, color=self.color,
                          marker=self.marker, drawstyle=self.drawstyle,
-                         label=self.label, alpha=self.alpha)
+                         label=self.label, alpha=self.alpha,
+                         markersize=self.marksize)
+            if not(self.linestyle):
+                l[0].set_markerfacecolor(
+                    matplotlib.colors.to_rgba(self.color, self.alpha))
             # Define a two horizontal line in the ax, if errorline has been set
             if self.errorline:
                 self.ax.axhline(y=self.errorline[1], linestyle='-.',
@@ -179,11 +185,16 @@ class DataAx:
                              range=self.limsbins, edgecolor='black',
                              alpha=self.alpha, color=self.color)
 
+            if not(self.bottomax) and not(self.ticklabels):
+                plt.setp(self.ax.get_xticklabels(), fontsize=8, visible=False)
+            if self.bottomax or self.ticklabels:
+                print('Bottom ax!!!')
+                plt.setp(self.ax.get_xticklabels(), fontsize=8,
+                         rotation=45, ha='right', visible=True)
             if self.bottomax:
                 self.ax.set_xlabel(self.xlabel, fontsize=9)
+
             plt.xticks(self.bins)
-            plt.setp(self.ax.get_xticklabels(), fontsize=8,
-                    rotation=35, ha='right')
 
         # Define the plot area style for the ax
         self.ax.grid(True)
@@ -207,7 +218,13 @@ class DataAx:
             self.ax = plt.subplot(gs[ys:ye,self.xs:self.xe],
                                   sharex=masterax.ax)
 
-# axPlt object end
+    @staticmethod
+    def update_axe(data_axe, **kwargs):
+        for attr in kwargs:
+            setattr(data_axe, attr, kwargs[attr])
+        return data_axe
+
+# DataAx class end
 
 class DataAxePlotter:
     def __init__(self, ncols=1):
@@ -256,9 +273,7 @@ class DataAxePlotter:
     def plotConfig(self, title=None, xlabels=None):
         '''
         This function is used to:
-            - Disable tick labels for plots other than the bottom positions
             - Set the date labels on the bottom plots
-            - Update Plot Event Zones
         '''
         Dax = self.Axe
         if xlabels:
@@ -267,9 +282,11 @@ class DataAxePlotter:
                     if Dax[c][n].bottomax:
                         Dax[c][n].ax.set_xlabel(xlabels[c])
         plt.suptitle(title)
-        plt.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.95,
-                            hspace=0.20, wspace=0.2)
+        plt.subplots_adjust(top=0.95, bottom=0.1, left=0.085, right=0.95,
+                            hspace=0.125, wspace=0.225)
         plt.show()
+
+# DataAxePlotter class end
 
 def extract_h5df(hdf5File, stime, etime, listonly=False):
     # Create empty arrays for TCS in position time stamp and value

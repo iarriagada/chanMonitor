@@ -1,0 +1,49 @@
+﻿# TCS - MCS Drives
+tcs:drives:driveMCS.VALI
+
+# TCS - CRCS Drives
+tcs:drives:driveCRS.VALA
+
+# MCS stream receiver “something:FollowA”
+mc:followA.J
+mc:azDemandPos
+mc:azCurrentPos
+mc:azPosError
+mc:elDemandPos
+mc:elCurrentPos
+mc:elPosError
+
+# CRCS stream receiver “something:FollowA”
+cr:followA.J
+cr:crDemandPos
+cr:crCurrentPos
+cr:crPmacPosError
+
+# PWFS1 stream receiver
+tcs:drives:pwfs1Xdemand
+tcs:drives:pwfs1Ydemand
+tcs:drives:pwfs1Zdemand
+
+# PWFS2 stream receiver
+tcs:drives:pwfs2Xdemand
+tcs:drives:pwfs2Ydemand
+tcs:drives:pwfs2Zdemand
+
+# OIWFS stream receiver
+#tcs:drives:oiwfsXdemand
+#tcs:drives:oiwfsYdemand
+
+# Time audit
+ta:mc:diff
+ta:cr:diff
+ta:tcs:diff
+ta:m2:diff
+ta:ag:diff
+ta:tcs:rmsErr.VALJ
+ta:mc:rmsErr.VALJ
+ta:cr:rmsErr.VALJ
+ta:ag:rmsErr.VALJ
+ta:m2:rmsErr.VALJ
+
+# SCS
+tcs:drives:driveM2S.VALA
