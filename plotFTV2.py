@@ -24,13 +24,13 @@ def parse_args():
     parser.add_argument('-st',
                            '--starttime',
                            dest='stime',
-                           default=False,
+                           default=None,
                            help='Plot range start time, eg. 210111T2130')
 
     parser.add_argument('-et',
                            '--endtime',
                            dest='etime',
-                           default=False,
+                           default=None,
                            help='Plot range end time, eg. 210111T2315')
 
     parser.add_argument('-lc',
@@ -57,8 +57,7 @@ if __name__ == '__main__':
     # Read h5 file
     recData = ped.extract_hdf5(args.hdf5File,
                                args.stime,
-                               args.etime,
-                               args.list_chan)
+                               args.etime)
 
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
                  np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]

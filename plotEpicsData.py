@@ -288,8 +288,8 @@ class DataAxePlotter:
 
 # DataAxePlotter class end
 
-def extract_hdf5(hdf5File, channel_mask=None,
-                 start_time=None, end_time=None, listonly=False):
+def extract_hdf5(hdf5File, start_time=None,
+                 end_time=None, channel_mask=None):
     # Handle the start and end times
     if start_time:
         try:
