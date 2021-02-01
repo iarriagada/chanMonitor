@@ -67,6 +67,7 @@ class DataAx:
         self.ax = None
         self.shaxname = shax
         self.shax = None
+        self.mstax = None
         self.ylabel = ylabel
         self.xlabel = xlabel
         self.ylims = ylims
@@ -104,10 +105,11 @@ class DataAx:
         It places each axe pair within the gridspace, and set all its
         characteristics
         '''
+        shared_x_axis = None
         if not(self.histbins):
             shared_x_axis = masterax.ax
-        else:
-            shared_x_axis = None
+        if self.mstax:
+            shared_x_axis = self.mstax.ax
 
         if self.shax:
             self.ax = self.shax.ax
