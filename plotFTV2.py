@@ -62,7 +62,7 @@ if __name__ == '__main__':
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
                  np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
     tc1_VALA_0 = [recData['tcs:drives:driveCRS.VALA'][0],
-                 np.array([e[0] for e in recData['tcs:drives:driveCRS.VALA'][1]])]
+                 [e[0] for e in recData['tcs:drives:driveCRS.VALA'][1]]]
     mcs_j_VALA_0 = [recData['mc:followA.J'][0],
                  [e[0] for e in recData['mc:followA.J'][1]]]
 
@@ -70,51 +70,43 @@ if __name__ == '__main__':
     cr_dmd_val0_diff = ped.diffData(tc1_VALA_0)
     tc_diff_norm, tc_diff_outl = ped.filter_outliers(tc1_VALI_4,
                                                      0.00,
-                                                     0.15)
+                                                     0.22)
     mc_diff_norm, mc_diff_outl = ped.filter_outliers(mcs_dmd_diff,
                                                      0.00,
-                                                     0.15)
-    cr_diff_norm, cr_diff_outl = ped.filter_outliers(cr_dmd_val0_diff,
+                                                     0.22)
+    ta_tcs_norm, ta_tcs_outl = ped.filter_outliers(recData['ta:tcs:diff'],
                                                      0.00,
-                                                     0.15)
-
-    if 'ta:tcs:diff' in recData.keys():
-        ta_tcs_norm, ta_tcs_outl = ped.filter_outliers(recData['ta:tcs:diff'],
-                                                        0.00,
-                                                        0.006)
-        ta_mc_norm, ta_mc_outl = ped.filter_outliers(recData['ta:mc:diff'],
-                                                        0.00,
-                                                        0.006)
-        ta_cr_norm, ta_cr_outl = ped.filter_outliers(recData['ta:cr:diff'],
-                                                        0.00,
-                                                        0.006)
-        ta_m2_norm, ta_m2_outl = ped.filter_outliers(recData['ta:m2:diff'],
-                                                        0.00,
-                                                        0.006)
-        ta_max_array = [np.amax(a) for a in [ta_tcs_outl[1],
-                                            ta_mc_outl[1],
-                                            ta_cr_outl[1],
-                                            ta_m2_outl[1]] if len(a)]
-        ta_min_array = [np.amin(a) for a in [ta_tcs_outl[1],
-                                            ta_mc_outl[1],
-                                            ta_cr_outl[1],
-                                            ta_m2_outl[1]] if len(a)]
-        ylim_ta_hist = (0, len(recData['ta:tcs:diff'][1]))
-        ylim_ta_out_tcs = (0, len(ta_tcs_outl))
-        ylim_ta_out_mcs = (0, len(ta_mc_outl))
-        ylim_ta_out_crcs = (0, len(ta_cr_outl))
-        ylim_ta_out_scs = (0, len(ta_m2_outl))
-        ylim_ta = (-0.0001, 0.008)
-        ylim_ta_out = (-1.1, 0.1)
-        lim_bin_ta = (0, 6)
-        lim_bin_ta_out = (np.amin(ta_min_array), np.amax(ta_max_array))
+                                                     0.006)
+    ta_mc_norm, ta_mc_outl = ped.filter_outliers(recData['ta:mc:diff'],
+                                                     0.00,
+                                                     0.006)
+    ta_cr_norm, ta_cr_outl = ped.filter_outliers(recData['ta:cr:diff'],
+                                                     0.00,
+                                                     0.006)
+    ta_m2_norm, ta_m2_outl = ped.filter_outliers(recData['ta:m2:diff'],
+                                                     0.00,
+                                                     0.006)
+    ta_max_array = [np.amax(a) for a in [ta_tcs_outl[1],
+                                         ta_mc_outl[1],
+                                         ta_cr_outl[1],
+                                         ta_m2_outl[1]] if len(a)]
+    ta_min_array = [np.amin(a) for a in [ta_tcs_outl[1],
+                                         ta_mc_outl[1],
+                                         ta_cr_outl[1],
+                                         ta_m2_outl[1]] if len(a)]
 
 
+    ylim_ta_hist = (0, len(recData['ta:tcs:diff'][1]))
+    ylim_ta_out_tcs = (0, len(ta_tcs_outl))
+    ylim_ta_out_mcs = (0, len(ta_mc_outl))
+    ylim_ta_out_crcs = (0, len(ta_cr_outl))
+    ylim_ta_out_scs = (0, len(ta_m2_outl))
+    ylim_ta = (-0.0001, 0.008)
+    ylim_ta_out = (-1.1, 0.1)
     ylim_dr_mcs = (0.07, 0.13)
     ylim_dr_crcs = (0.07, 0.21)
-    lim_bin_mcs = (0, 0.15)
-    # lim_bin_mcs_out = (0.15, np.amax(mc_diff_outl[1]))
-    lim_bin_mcs_out = (0.15, 1)
+    lim_bin_ta = (0, 6)
+    lim_bin_ta_out = (np.amin(ta_min_array), np.amax(ta_max_array))
 
     # if 'mc:azDemandPos' in recData.keys():
     mc_azDmd = DataAx(recData['mc:azDemandPos'],
@@ -171,7 +163,7 @@ if __name__ == '__main__':
                                 'b',
                                 linestyle='',
                                 marker='o',
-                                label='mcs rx time diff',
+                                label='mcs reception time diff',
                                 ylabel="Difference\n[sec]",
                                 linewidth=2.50)
     # ylims=ylim_dr_mcs,
@@ -181,24 +173,6 @@ if __name__ == '__main__':
                                 linestyle='',
                                 marker='o',
                                 label='mcs rx time diff outl',
-                                ylabel="Difference\n[sec]",
-                                linewidth=2.50)
-    # ylims=ylim_dr_mcs,
-
-    crs_followAJ0_norm = DataAx(cr_diff_norm,
-                                'xkcd:orange',
-                                linestyle='',
-                                marker='o',
-                                label='crcs tx time diff',
-                                ylabel="Difference\n[sec]",
-                                linewidth=2.50)
-    # ylims=ylim_dr_mcs,
-
-    crs_followAJ0_outl = DataAx(cr_diff_outl,
-                                'r',
-                                linestyle='',
-                                marker='o',
-                                label='crcs tx time diff outl',
                                 ylabel="Difference\n[sec]",
                                 linewidth=2.50)
     # ylims=ylim_dr_mcs,
@@ -243,7 +217,7 @@ if __name__ == '__main__':
                                      histbins=30,
                                      linewidth=2.50)
 
-    mcs_followAJ0_out_hist = DataAx(mc_diff_outl[1],
+    mcs_followAJ0_out_dist = DataAx(mc_diff_outl[1],
                                      'r',
                                      label='mcs rx time diff outl hist',
                                      ylabel="No Samples\n[un]",
@@ -251,239 +225,191 @@ if __name__ == '__main__':
                                      histbins=30,
                                      linewidth=2.50)
 
-    tcs_drvCRSvA0_nrm_hist = DataAx(cr_diff_norm[1],
-                                    'xkcd:orange',
-                                    label='tc/cr tx time diff hist',
-                                    ylabel="No Samples\n[un]",
-                                    xlabel="Time diff [sec]",
-                                    histbins=30,
-                                    linewidth=2.50)
+    timeaudit_tcs_norm = DataAx(ta_tcs_norm,
+                          'r',
+                           linestyle='',
+                           marker='o',
+                          label='ta:tcs:diff',
+                          ylims=ylim_ta,
+                          ylabel="Difference\n[sec]",
+                           marksize=4,
+                                height=2,
+                          linewidth=1.0)
 
-    tcs_drvCRSvA0_out_hist = DataAx(cr_diff_outl[1],
-                                    'r',
-                                    label='tc/cr tx time diff outl hist',
-                                    ylabel="No Samples\n[un]",
-                                    xlabel="Time diff [sec]",
-                                    histbins=30,
-                                    linewidth=2.50)
+    timeaudit_tcs_outl = DataAx(ta_tcs_outl,
+                          'r',
+                           linestyle='',
+                           marker='o',
+                          label='ta:tcs:diff outlier',
+                          ylabel="Difference\n[sec]",
+                           marksize=3,
+                                height=2,
+                          linewidth=1.0)
+                          # ylims=ylim_ta_out,
 
-    # Time Audit plots
-    if 'ta:tcs:diff' in recData.keys():
-        timeaudit_tcs_norm = DataAx(ta_tcs_norm,
-                            'r',
-                            linestyle='',
-                            marker='o',
-                            label='ta:tcs:diff',
-                            ylims=ylim_ta,
+    timeaudit_crcs_norm = DataAx(ta_cr_norm,
+                            'g',
+                           linestyle='',
+                           marker='o',
+                            label='ta:cr:diff',
                             ylabel="Difference\n[sec]",
-                            marksize=4,
-                                    height=2,
+                           marksize=3,
                             linewidth=1.0)
 
-        timeaudit_tcs_outl = DataAx(ta_tcs_outl,
-                            'r',
-                            linestyle='',
-                            marker='o',
-                            label='ta:tcs:diff outlier',
+    timeaudit_crcs_outl = DataAx(ta_cr_outl,
+                            'g',
+                           linestyle='',
+                           marker='o',
+                            label='ta:cr:diff outlier',
                             ylabel="Difference\n[sec]",
-                            marksize=3,
-                                    height=2,
+                           marksize=3,
                             linewidth=1.0)
-                            # ylims=ylim_ta_out,
 
-        timeaudit_crcs_norm = DataAx(ta_cr_norm,
-                                'g',
-                            linestyle='',
-                            marker='o',
-                                label='ta:cr:diff',
-                                ylabel="Difference\n[sec]",
-                            marksize=3,
-                                linewidth=1.0)
+    timeaudit_mcs_norm = DataAx(ta_mc_norm,
+                            'b',
+                           linestyle='',
+                           marker='o',
+                            label='ta:mc:diff',
+                            ylabel="Difference\n[sec]",
+                           marksize=2,
+                            linewidth=1.0)
 
-        timeaudit_crcs_outl = DataAx(ta_cr_outl,
-                                'g',
-                            linestyle='',
-                            marker='o',
-                                label='ta:cr:diff outlier',
-                                ylabel="Difference\n[sec]",
-                            marksize=3,
-                                linewidth=1.0)
+    timeaudit_mcs_outl = DataAx(ta_mc_outl,
+                            'b',
+                           linestyle='',
+                           marker='o',
+                            label='ta:mc:diff outlier',
+                            ylabel="Difference\n[sec]",
+                           marksize=3,
+                            linewidth=1.0)
 
-        timeaudit_mcs_norm = DataAx(ta_mc_norm,
-                                'b',
-                            linestyle='',
-                            marker='o',
-                                label='ta:mc:diff',
-                                ylabel="Difference\n[sec]",
-                            marksize=2,
-                                linewidth=1.0)
+    timeaudit_scs_norm = DataAx(ta_m2_norm,
+                           'xkcd:tangerine',
+                           linestyle='',
+                           marker='o',
+                            label='ta:m2:diff',
+                            ylabel="Difference\n[sec]",
+                           marksize=1,
+                           alpha=0.25,
+                            linewidth=0.5)
 
-        timeaudit_mcs_outl = DataAx(ta_mc_outl,
-                                'b',
-                            linestyle='',
-                            marker='o',
-                                label='ta:mc:diff outlier',
-                                ylabel="Difference\n[sec]",
-                            marksize=3,
-                                linewidth=1.0)
+    timeaudit_scs_outl = DataAx(ta_m2_outl,
+                           'xkcd:tangerine',
+                           linestyle='',
+                           marker='o',
+                            label='ta:m2:diff outlier',
+                            ylabel="Difference\n[sec]",
+                           marksize=3,
+                            linewidth=0.5)
 
-        timeaudit_scs_norm = DataAx(ta_m2_norm,
-                            'xkcd:tangerine',
-                            linestyle='',
-                            marker='o',
-                                label='ta:m2:diff',
-                                ylabel="Difference\n[sec]",
-                            marksize=1,
-                            alpha=0.25,
-                                linewidth=0.5)
+    ta_tcs_norm_hist = DataAx(ta_tcs_norm[1]*1000,
+                           'r',
+                           label='ta:tcs:diff',
+                           ylabel="No samples [un]",
+                           xlabel="Time diff [ms]",
+                           histbins=30,
+                                 ylims=ylim_ta_hist,
+                                limsbins=lim_bin_ta,
+                           linewidth=1.50)
 
-        timeaudit_scs_outl = DataAx(ta_m2_outl,
-                            'xkcd:tangerine',
-                            linestyle='',
-                            marker='o',
-                                label='ta:m2:diff outlier',
-                                ylabel="Difference\n[sec]",
-                            marksize=3,
-                                linewidth=0.5)
+    ta_tcs_outl_hist = DataAx(ta_tcs_outl[1],
+                           'r',
+                           label='ta:tcs:diff outlier',
+                           ylabel="No samples [un]",
+                           xlabel="Time diff [s]",
+                           histbins=30,
+                                limsbins=lim_bin_ta_out,
+                           linewidth=1.50)
+                                 # ylims=ylim_ta_out_tcs,
 
-        ta_tcs_norm_hist = DataAx(ta_tcs_norm[1]*1000,
-                            'r',
-                            label='ta:tcs:diff',
+    ta_crcs_norm_hist = DataAx(ta_cr_norm[1]*1000,
+                            'g',
+                            label='ta:cr:diff',
                             ylabel="No samples [un]",
                             xlabel="Time diff [ms]",
                             histbins=30,
-                                    ylims=ylim_ta_hist,
-                                    limsbins=lim_bin_ta,
+                                 ylims=ylim_ta_hist,
+                                limsbins=lim_bin_ta,
                             linewidth=1.50)
 
-        ta_tcs_outl_hist = DataAx(ta_tcs_outl[1],
-                            'r',
-                            label='ta:tcs:diff outlier',
+    ta_crcs_outl_hist = DataAx(ta_cr_outl[1],
+                            'g',
+                            label='ta:cr:diff outlier',
                             ylabel="No samples [un]",
                             xlabel="Time diff [s]",
                             histbins=30,
-                                    limsbins=lim_bin_ta_out,
+                                limsbins=lim_bin_ta_out,
                             linewidth=1.50)
-                                    # ylims=ylim_ta_out_tcs,
+                                 # ylims=ylim_ta_out_crcs,
 
-        ta_crcs_norm_hist = DataAx(ta_cr_norm[1]*1000,
-                                'g',
-                                label='ta:cr:diff',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [ms]",
-                                histbins=30,
-                                    ylims=ylim_ta_hist,
-                                    limsbins=lim_bin_ta,
-                                linewidth=1.50)
+    ta_mcs_norm_hist = DataAx(ta_mc_norm[1]*1000,
+                            'b',
+                            label='ta:mc:diff',
+                            ylabel="No samples [un]",
+                            xlabel="Time diff [ms]",
+                            histbins=30,
+                                 ylims=ylim_ta_hist,
+                                limsbins=lim_bin_ta,
+                            linewidth=1.50)
 
-        ta_crcs_outl_hist = DataAx(ta_cr_outl[1],
-                                'g',
-                                label='ta:cr:diff outlier',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [s]",
-                                histbins=30,
-                                    limsbins=lim_bin_ta_out,
-                                linewidth=1.50)
-                                    # ylims=ylim_ta_out_crcs,
+    ta_mcs_outl_hist = DataAx(ta_mc_outl[1],
+                            'b',
+                            label='ta:mc:diff outlier',
+                            ylabel="No samples [un]",
+                            xlabel="Time diff [s]",
+                            histbins=30,
+                                limsbins=lim_bin_ta_out,
+                            linewidth=1.50)
+                                 # ylims=ylim_ta_out_mcs,
 
-        ta_mcs_norm_hist = DataAx(ta_mc_norm[1]*1000,
-                                'b',
-                                label='ta:mc:diff',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [ms]",
-                                histbins=30,
-                                    ylims=ylim_ta_hist,
-                                    limsbins=lim_bin_ta,
-                                linewidth=1.50)
+    ta_scs_norm_hist = DataAx(ta_m2_norm[1]*1000,
+                           'xkcd:tangerine',
+                            label='ta:m2:diff',
+                            ylabel="No samples [un]",
+                            xlabel="Time diff [ms]",
+                            histbins=30,
+                                 ylims=ylim_ta_hist,
+                                limsbins=lim_bin_ta,
+                            linewidth=1.50)
 
-        ta_mcs_outl_hist = DataAx(ta_mc_outl[1],
-                                'b',
-                                label='ta:mc:diff outlier',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [s]",
-                                histbins=30,
-                                    limsbins=lim_bin_ta_out,
-                                linewidth=1.50)
-                                    # ylims=ylim_ta_out_mcs,
-
-        ta_scs_norm_hist = DataAx(ta_m2_norm[1]*1000,
-                            'xkcd:tangerine',
-                                label='ta:m2:diff',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [ms]",
-                                histbins=30,
-                                    ylims=ylim_ta_hist,
-                                    limsbins=lim_bin_ta,
-                                linewidth=1.50)
-
-        ta_scs_outl_hist = DataAx(ta_m2_outl[1],
-                            'xkcd:tangerine',
-                                label='ta:m2:diff outlier',
-                                ylabel="No samples [un]",
-                                xlabel="Time diff [s]",
-                                histbins=30,
-                                    limsbins=lim_bin_ta_out,
-                                linewidth=1.50)
-                                    # ylims=ylim_ta_out_scs,
+    ta_scs_outl_hist = DataAx(ta_m2_outl[1],
+                           'xkcd:tangerine',
+                            label='ta:m2:diff outlier',
+                            ylabel="No samples [un]",
+                            xlabel="Time diff [s]",
+                            histbins=30,
+                                limsbins=lim_bin_ta_out,
+                            linewidth=1.50)
+                                 # ylims=ylim_ta_out_scs,
 
     plts = DataAxePlotter(ncols=3)
 
-    # plts.Axe['c1']['mc_azDmd'] = mc_azDmd
-    # plts.Axe['c1']['mc_azPos'] = DataAx.update_axe(mc_azPos,
-                                                   # shaxname='mc_azDmd')
-    # plts.Axe['c1']['ta_tcs_norm'] = timeaudit_tcs_norm
-    # plts.Axe['c1']['ta_crcs_norm'] = DataAx.update_axe(timeaudit_crcs_norm,
-                                                              # shaxname='ta_tcs_norm')
-    # plts.Axe['c1']['ta_mcs_norm'] = DataAx.update_axe(timeaudit_mcs_norm,
-                                                             # shaxname='ta_tcs_norm')
-    # plts.Axe['c1']['ta_scs_norm'] = DataAx.update_axe(timeaudit_scs_norm,
-                                                             # shaxname='ta_tcs_norm')
-    # plts.Axe['c1']['ta_tcs_outl'] = timeaudit_tcs_outl
-    # plts.Axe['c1']['ta_crcs_outl'] = DataAx.update_axe(timeaudit_crcs_outl,
-                                                              # shaxname='ta_tcs_outl')
-    # plts.Axe['c1']['ta_mcs_outl'] = DataAx.update_axe(timeaudit_mcs_outl,
-                                                             # shaxname='ta_tcs_outl')
-    # plts.Axe['c1']['ta_scs_outl'] = DataAx.update_axe(timeaudit_scs_outl,
-                                                             # shaxname='ta_tcs_outl')
-    # plts.Axe['c2']['ta_tcs_norm_hist'] = ta_tcs_norm_hist
-    # plts.Axe['c2']['ta_crcs_norm_hist'] = ta_crcs_norm_hist
-    # plts.Axe['c2']['ta_mcs_norm_hist'] = ta_mcs_norm_hist
-    # plts.Axe['c2']['ta_scs_norm_hist'] = ta_scs_norm_hist
+    plts.Axe['c1']['mc_azDmd'] = mc_azDmd
+    plts.Axe['c1']['mc_azPos'] = DataAx.update_axe(mc_azPos,
+                                                   shaxname='mc_azDmd')
+    plts.Axe['c1']['ta_tcs_norm'] = timeaudit_tcs_norm
+    plts.Axe['c1']['ta_crcs_norm'] = DataAx.update_axe(timeaudit_crcs_norm,
+                                                              shaxname='ta_tcs_norm')
+    plts.Axe['c1']['ta_mcs_norm'] = DataAx.update_axe(timeaudit_mcs_norm,
+                                                             shaxname='ta_tcs_norm')
+    plts.Axe['c1']['ta_scs_norm'] = DataAx.update_axe(timeaudit_scs_norm,
+                                                             shaxname='ta_tcs_norm')
+    plts.Axe['c1']['ta_tcs_outl'] = timeaudit_tcs_outl
+    plts.Axe['c1']['ta_crcs_outl'] = DataAx.update_axe(timeaudit_crcs_outl,
+                                                              shaxname='ta_tcs_outl')
+    plts.Axe['c1']['ta_mcs_outl'] = DataAx.update_axe(timeaudit_mcs_outl,
+                                                             shaxname='ta_tcs_outl')
+    plts.Axe['c1']['ta_scs_outl'] = DataAx.update_axe(timeaudit_scs_outl,
+                                                             shaxname='ta_tcs_outl')
+    plts.Axe['c2']['ta_tcs_norm_hist'] = ta_tcs_norm_hist
+    plts.Axe['c2']['ta_crcs_norm_hist'] = ta_crcs_norm_hist
+    plts.Axe['c2']['ta_mcs_norm_hist'] = ta_mcs_norm_hist
+    plts.Axe['c2']['ta_scs_norm_hist'] = ta_scs_norm_hist
 
-    # plts.Axe['c3']['ta_tcs_outl_hist'] = ta_tcs_outl_hist
-    # plts.Axe['c3']['ta_crcs_outl_hist'] = ta_crcs_outl_hist
-    # plts.Axe['c3']['ta_mcs_outl_hist'] = ta_mcs_outl_hist
-    # plts.Axe['c3']['ta_scs_outl_hist'] = ta_scs_outl_hist
-
-    plts.Axe['c1']['az_dmd'] = mc_azDmd
-    plts.Axe['c1']['az_pos'] = DataAx.update_axe(mc_azPos, shaxname='az_dmd')
-    plts.Axe['c1']['mcs_dmd_tx'] = DataAx.update_axe(tcs_drvMCSvI4_norm,
-                                                         marksize=2)
-    plts.Axe['c1']['mcs_dmd_tx_out'] = DataAx.update_axe(tcs_drvMCSvI4_outl,
-                                                         marksize=2)
-    plts.Axe['c1']['mcs_dmd_rx'] = DataAx.update_axe(mcs_followAJ0_norm,
-                                                         marksize=2)
-    plts.Axe['c1']['mcs_dmd_rx_out'] = DataAx.update_axe(mcs_followAJ0_outl,
-                                                         marksize=2)
-    plts.Axe['c1']['cr_dmd_rx'] = DataAx.update_axe(crs_followAJ0_norm,
-                                                         marksize=2)
-    plts.Axe['c1']['cr_dmd_rx_out'] = DataAx.update_axe(crs_followAJ0_outl,
-                                                         marksize=2)
-    plts.Axe['c2']['mcs_dtx_hist'] = DataAx.update_axe(tcs_drvMCSvI4_nrm_hist,
-                                                       limsbins=lim_bin_mcs)
-    norm_hist_mstax = plts.Axe['c2']['mcs_dtx_hist']
-    plts.Axe['c2']['mcs_drx_hist'] = DataAx.update_axe(mcs_followAJ0_norm_hist,
-                                                       mstax=norm_hist_mstax,
-                                                       limsbins=lim_bin_mcs)
-    plts.Axe['c2']['crs_dtx_hist'] = DataAx.update_axe(tcs_drvCRSvA0_nrm_hist,
-                                                       mstax=norm_hist_mstax,
-                                                       limsbins=lim_bin_mcs)
-    plts.Axe['c3']['mcs_dtx_out_hist'] = DataAx.update_axe(tcs_drvMCSvI4_out_hist,
-                                                       limsbins=lim_bin_mcs_out)
-    plts.Axe['c3']['mcs_drx_out_hist'] = DataAx.update_axe(mcs_followAJ0_out_hist,
-                                                       limsbins=lim_bin_mcs_out)
-    plts.Axe['c3']['crs_dtx_out_hist'] = DataAx.update_axe(tcs_drvCRSvA0_out_hist,
-                                                       limsbins=lim_bin_mcs_out)
+    plts.Axe['c3']['ta_tcs_outl_hist'] = ta_tcs_outl_hist
+    plts.Axe['c3']['ta_crcs_outl_hist'] = ta_crcs_outl_hist
+    plts.Axe['c3']['ta_mcs_outl_hist'] = ta_mcs_outl_hist
+    plts.Axe['c3']['ta_scs_outl_hist'] = ta_scs_outl_hist
 
     plts.positionPlot()
     plts.plotConfig('Fast Track Analysis')
