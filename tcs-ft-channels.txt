@@ -4,6 +4,9 @@ tcs:drives:driveMCS.VALI
 # TCS - CRCS Drives
 tcs:drives:driveCRS.VALA
 
+# General in position flag
+tcs:inPosition
+
 # MCS stream receiver “something:FollowA”
 mc:followA.J
 mc:azDemandPos
@@ -12,12 +15,15 @@ mc:azPosError
 mc:elDemandPos
 mc:elCurrentPos
 mc:elPosError
+mc:inPositionAz
+mc:inPositionEl
 
 # CRCS stream receiver “something:FollowA”
 cr:followA.J
 cr:crDemandPos
 cr:crCurrentPos
 cr:crPmacPosError
+cr:inPosition
 
 # PWFS1 stream receiver
 tcs:drives:pwfs1Xdemand

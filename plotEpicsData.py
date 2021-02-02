@@ -526,6 +526,24 @@ def ipZones(offsetArray, zcolor):
     offsetZonesArray = np.array([offsetNA,offsetPA,zonecolor]).T
     return offsetZonesArray
 
+def ipZonesT(offsetArray, zcolor='k'):
+    zeroFlag = True
+    offsetPA = []
+    offsetNA = []
+    for t,ov in np.array(offsetArray).T:
+        if ov and zeroFlag:
+            zeroFlag = False
+            offsetPA.append(t)
+        if not(ov) and not(zeroFlag):
+            zeroFlag = True
+            offsetNA.append(t)
+    if len(offsetPA) > len(offsetNA):
+        offsetPA = offsetPA[:-1]
+    zonecolor = [zcolor for i in range(len(offsetPA))]
+    print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
+    offsetZonesArray = np.array([offsetPA,offsetNA,zonecolor]).T
+    return offsetZonesArray
+
 def gcd(a,b):
     '''
     gcd() calculates the greatest common denominator
@@ -567,6 +585,22 @@ def filter_outliers(data, low_lim, high_lim):
     filtered_data = [data[0][filt_mask], data[1][filt_mask]]
     outlier_data = [data[0][~filt_mask], data[1][~filt_mask]]
     return filtered_data, outlier_data
+
+def tracking_filter(data, ip_data):
+    in_pos_data = ipZonesT(ip_data)
+    ts_aux = data[0]
+    val_aux = data[1]
+    ts_array = []
+    val_array = []
+    for zone in in_pos_data:
+        zone_mask = (float(zone[0])<ts_aux) & (ts_aux<float(zone[1]))
+        ts_array = np.append(ts_array[:-5], ts_aux[zone_mask])
+        val_array = np.append(val_array[:-5], val_aux[zone_mask])
+        val_aux = val_aux[ts_aux>float(zone[1])]
+        ts_aux = ts_aux[ts_aux>float(zone[1])]
+    return [ts_array, val_array]
+
+
 
 if __name__ == '__main__':
     x = np.arange(21)
