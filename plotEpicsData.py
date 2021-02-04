@@ -531,8 +531,16 @@ def ipZones(offsetArray, zcolor):
     return offsetZonesArray
 
 def ipZonesT(offsetArray, zcolor='k'):
+    '''
+    ipZonesT() Generates a data matrix with timestamp start/end pairs for in
+    position timeframes. It adds a color string to each zone for plotting
+    purposes
+    '''
+    # Return an empty array if offset array is empty
     if not(len(offsetArray[0])):
         return []
+    # If first sample of in position flag is 1, set it as start time, if it's 0
+    # assume is not in position.
     if offsetArray[1][0]:
         zeroFlag = True
     else:
@@ -653,19 +661,17 @@ if __name__ == '__main__':
     x = np.arange(21,step=0.01)
     x2 = np.arange(21,step=0.01)
     y1 = x**2
-    y2 = 50 * (np.sin((2*3.1415*2) * x)) + 25 * (np.sin((2*3.1415*1.5) * x))
+    y2 = 50 * (np.sin((2*3.1415*2) * x)) + 25 * (np.sin((2*3.1415*1) * x))
     y5 = 50 * (np.sin((2*3.1415*2) * x2))
     y3 = 500 / (x + 1)
-    y4 = np.fft.fft(y2)
-    f = np.fft.fftfreq(len(y2), 0.1)
-    mask = f > 0
+    y4 = fft_generator([x,y2])
     plts = DataAxePlotter(2)
     plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4', rawx=True)
     plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4', rawx=True)
     plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4', rawx=True)
-    plts.Axe['c1']['g7'] = DataAx([x2,y5], 'k', linestyle='--', label='g7', shax='g4', rawx=True)
+    plts.Axe['c1']['g7'] = DataAx([x2,y5], 'k', linestyle='--', label='g7', rawx=True)
+    plts.Axe['c2']['g1'] = DataAx(y4, 'b', ylabel='t5', label='g2', height=2, rawx=True, standalone=True)
     plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2, rawx=True)
-    plts.Axe['c2']['g1'] = DataAx([f[mask],abs(y4[mask])], 'b', ylabel='t5', label='g2', height=2, rawx=True, standalone=True)
     plts.positionPlot()
     plts.plotConfig()
 
