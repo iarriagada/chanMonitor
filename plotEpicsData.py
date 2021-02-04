@@ -56,10 +56,11 @@ class DataAx:
     '''
 
     def __init__(self, data, color, linestyle='-', marker=None,
-                 drawstyle='default', label=None, ylabel='',
+                 drawstyle='default', label=None, ylabel='', rawx=False,
                  xlabel='', ylims=[], shax=None, height=1, marksize=5,
                  errorline=[], zone=[], alpha=1.0, ticklabels=False,
-                 linewidth=1.25, histbins=False, limsbins=None):
+                 standalone=False, linewidth=1.25, histbins=False,
+                 limsbins=None):
         '''
         Creates the plot object
         '''
@@ -79,6 +80,8 @@ class DataAx:
         self.xs = None
         self.xe = None
         self.bottomax = False
+        self.rawx = rawx
+        self.standalone = standalone
         # Plot attributes
         self.data = data
         self.color = color
@@ -106,7 +109,7 @@ class DataAx:
         characteristics
         '''
         shared_x_axis = None
-        if not(self.histbins):
+        if not(self.histbins) and not(self.standalone):
             shared_x_axis = masterax.ax
         if self.mstax:
             shared_x_axis = self.mstax.ax
@@ -124,8 +127,9 @@ class DataAx:
         # plotting. If it is prepares an array with the x values.
         if not(self.histbins):
             dataT, dataY = self.data
-            dataT = [datetime.fromtimestamp(ts) for ts in dataT]
-        else:
+            if not(self.rawx):
+                dataT = [datetime.fromtimestamp(ts) for ts in dataT]
+        if self.histbins:
             dataX = self.data
 
         # Checks if the first plot has been defined, if not, plot the current
@@ -170,16 +174,16 @@ class DataAx:
                                bbox_to_anchor=(1, 1),
                                fontsize = 'small')
 
-            if not(self.bottomax):
-                plt.setp(self.ax.get_xticklabels(), fontsize=9, visible=False)
-            else:
-                self.ax.grid(True)
+            if self.bottomax and not(self.rawx):
                 self.ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
                 self.ax.xaxis.set_major_formatter(
                     matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
                 self.ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
+            if self.bottomax:
                 plt.setp(self.ax.get_xticklabels(), fontsize=8,
                          rotation=25, ha='right')
+            if not(self.bottomax):
+                plt.setp(self.ax.get_xticklabels(), fontsize=9, visible=False)
         # Configure an histogram ax
         else:
             self.bindata, self.bins, self.patches = \
@@ -527,7 +531,12 @@ def ipZones(offsetArray, zcolor):
     return offsetZonesArray
 
 def ipZonesT(offsetArray, zcolor='k'):
-    zeroFlag = True
+    if not(len(offsetArray[0])):
+        return []
+    if offsetArray[1][0]:
+        zeroFlag = True
+    else:
+        zeroFlag = False
     offsetPA = []
     offsetNA = []
     for t,ov in np.array(offsetArray).T:
@@ -537,6 +546,8 @@ def ipZonesT(offsetArray, zcolor='k'):
         if not(ov) and not(zeroFlag):
             zeroFlag = True
             offsetNA.append(t)
+    if offsetArray[1][-1] and not(zeroFlag):
+        offsetNA.append(offsetArray[0][-1])
     if len(offsetPA) > len(offsetNA):
         offsetPA = offsetPA[:-1]
     zonecolor = [zcolor for i in range(len(offsetPA))]
@@ -581,37 +592,80 @@ def filter_outliers(data, low_lim, high_lim):
     It generates two arrays, one with data within the limits, the other with the
     outliers.
     '''
+    # Create mask based on low and high values. Filter data array accordingly
     filt_mask = (low_lim<data[1]) & (data[1]<high_lim)
     filtered_data = [data[0][filt_mask], data[1][filt_mask]]
     outlier_data = [data[0][~filt_mask], data[1][~filt_mask]]
     return filtered_data, outlier_data
 
 def tracking_filter(data, ip_data):
+    '''
+    tracking_filter() filters a data array based on an in-position array,
+    returning a the data within in position timestamps
+    '''
+    # Generate the in position start - end timestamps
     in_pos_data = ipZonesT(ip_data)
+    # If there's no in position timestamps, return the data as-is. I'm
+    # shamelessly assuming the data is in position. Sue me
+    if not(len(in_pos_data)):
+        return data
+    # Lots of support arrays. Not sure how "best practices" or pythonic this is
     ts_aux = data[0]
     val_aux = data[1]
     ts_array = []
     val_array = []
+    # Go through all the zone timestamps pairs
     for zone in in_pos_data:
+        # Create a filter mask
         zone_mask = (float(zone[0])<ts_aux) & (ts_aux<float(zone[1]))
+        # Apply filter mask. I'm also assuming deleting trailing and leading 5
+        # points of data will filter out the huge error seen the first moments
+        # after an slew. Fudge factors are getting on my nerves
         ts_array = np.append(ts_array[:-5], ts_aux[zone_mask])
         val_array = np.append(val_array[:-5], val_aux[zone_mask])
+        # Trying to optimize operations, eliminate the filtered data from the
+        # source array
         val_aux = val_aux[ts_aux>float(zone[1])]
         ts_aux = ts_aux[ts_aux>float(zone[1])]
     return [ts_array, val_array]
 
-
+def fft_generator(data):
+    '''
+    fft_generator() Calculates the Fast Fourier Transform of a data set. It
+    formats the resulting array so it makes sense when it's plotted (ignores
+    the theoretical FFT analysis mumbo jumbo and goes straight to something that
+    we sw folk can make sense of.
+    '''
+    # Generate an array of timedeltas for every sample and then calculate the
+    # average to determine the sampling interval
+    dt_array = data[0][1:] - data[0][:-1]
+    dt = np.average(dt_array)
+    # Generate the FFT and the array with the frequencies
+    raw_fft = np.fft.fft(data[1])
+    raw_fft_freq = np.fft.fftfreq(len(data[1]), dt)
+    # Filter the weird math stuff, leave the real world info
+    freq_mask = raw_fft_freq >= 0
+    data_fft = abs(raw_fft[freq_mask])
+    data_fft_freq = raw_fft_freq[freq_mask]
+    return [data_fft_freq, data_fft]
 
 if __name__ == '__main__':
-    x = np.arange(21)
+    x = np.arange(21,step=0.01)
+    x2 = np.arange(21,step=0.01)
     y1 = x**2
-    y2 = 50 * (np.sin((3.1415/6) * x))
+    y2 = 50 * (np.sin((2*3.1415*2) * x)) + 25 * (np.sin((2*3.1415*1.5) * x))
+    y5 = 50 * (np.sin((2*3.1415*2) * x2))
     y3 = 500 / (x + 1)
+    y4 = np.fft.fft(y2)
+    f = np.fft.fftfreq(len(y2), 0.1)
+    mask = f > 0
     plts = DataAxePlotter(2)
-    plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4')
-    plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4')
-    plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4')
-    plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2)
+    plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4', rawx=True)
+    plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4', rawx=True)
+    plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4', rawx=True)
+    plts.Axe['c1']['g7'] = DataAx([x2,y5], 'k', linestyle='--', label='g7', shax='g4', rawx=True)
+    plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2, rawx=True)
+    plts.Axe['c2']['g1'] = DataAx([f[mask],abs(y4[mask])], 'b', ylabel='t5', label='g2', height=2, rawx=True, standalone=True)
     plts.positionPlot()
     plts.plotConfig()
 
