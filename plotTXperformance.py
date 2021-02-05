@@ -7,6 +7,11 @@ import plotEpicsData as ped
 import argparse
 import sys
 
+CHAN_LIST = ['tcs:drives:driveMCS.VALI',
+             'tcs:drives:driveCRS.VALA',
+             'mc:azDemandPos',
+             'mc:azCurrentPos',
+             'mc:followA.J']
 
 def parse_args():
     '''
@@ -57,10 +62,12 @@ if __name__ == '__main__':
     # Read h5 file
     recData = ped.extract_hdf5(args.hdf5File,
                                args.stime,
-                               args.etime)
+                               args.etime, CHAN_LIST)
 
     tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
                  np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
+    tc1_VALI_7 = [recData['tcs:drives:driveMCS.VALI'][0],
+                 np.array([e[7] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
     tc1_VALA_0 = [recData['tcs:drives:driveCRS.VALA'][0],
                  np.array([e[0] for e in recData['tcs:drives:driveCRS.VALA'][1]])]
     mcs_j_VALA_0 = [recData['mc:followA.J'][0],
@@ -68,6 +75,7 @@ if __name__ == '__main__':
 
     mcs_dmd_diff = ped.diffData(mcs_j_VALA_0)
     cr_dmd_val0_diff = ped.diffData(tc1_VALA_0)
+    tcs_cnt_diff = ped.diffData(tc1_VALI_7)
     tc_diff_norm, tc_diff_outl = ped.filter_outliers(tc1_VALI_4,
                                                      0.00,
                                                      0.15)
@@ -96,6 +104,14 @@ if __name__ == '__main__':
                       label='mc:azCurrentPos',
                       ylabel='Position [deg]',
                       linewidth=1.25)
+
+    tcs_drvMCSvI_cnt = DataAx(tcs_cnt_diff,
+                              'xkcd:pinkish purple',
+                            linestyle='',
+                            marker='+',
+                              label='driveMCS.VALI ID diff',
+                            ylabel="Difference\n[un]",
+                            linewidth=2.50)
 
     tcs_drvMCSvI4 = DataAx(tc1_VALI_4,
                             'g',
@@ -179,6 +195,15 @@ if __name__ == '__main__':
                                 histbins=30,
                                 linewidth=2.50)
 
+    tcs_drvMCSvI_cnt_hist = DataAx(tcs_cnt_diff[1],
+                                   'xkcd:pinkish purple',
+                                label='driveMCS.VALI cnt diff',
+                                ylabel="No Samples\n[un]",
+                                xlabel="Counter diff [sec]",
+                                   limsbins=(0,40),
+                                histbins=40,
+                                linewidth=2.50)
+
     tcs_drvCRSvA0_hist = DataAx(cr_dmd_val0_diff[1],
                                 'b',
                                 label='tc1 -> cr histogram time diff',
@@ -236,10 +261,11 @@ if __name__ == '__main__':
                                     linewidth=2.50)
 
 
-    plts = DataAxePlotter(ncols=3)
+    plts = DataAxePlotter(ncols=4)
 
     plts.Axe['c1']['az_dmd'] = mc_azDmd
     plts.Axe['c1']['az_pos'] = DataAx.update_axe(mc_azPos, shaxname='az_dmd')
+    plts.Axe['c1']['tcs_vali_cnt'] = tcs_drvMCSvI_cnt
     plts.Axe['c1']['mcs_dmd_tx'] = DataAx.update_axe(tcs_drvMCSvI4_norm,
                                                          marksize=2)
     plts.Axe['c1']['mcs_dmd_tx_out'] = DataAx.update_axe(tcs_drvMCSvI4_outl,
@@ -270,6 +296,7 @@ if __name__ == '__main__':
     plts.Axe['c3']['crs_dtx_out_hist'] = DataAx.update_axe(tcs_drvCRSvA0_out_hist,
                                                        mstax=outl_hist_mstax,
                                                        limsbins=lim_bin_mcs_out)
+    plts.Axe['c4']['tcs_vali_cnt_hist'] = tcs_drvMCSvI_cnt_hist
 
     plts.positionPlot()
     plts.plotConfig('Fast Track Analysis')

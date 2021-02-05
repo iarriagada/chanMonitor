@@ -7,6 +7,12 @@ import plotEpicsData as ped
 import argparse
 import sys
 
+CHAN_LIST = ['mc:azDemandPos',
+             'mc:azCurrentPos',
+             'ta:tcs:diff',
+             'ta:mc:diff',
+             'ta:cr:diff',
+             'ta:m2:diff']
 
 def parse_args():
     '''
@@ -57,23 +63,9 @@ if __name__ == '__main__':
     # Read h5 file
     recData = ped.extract_hdf5(args.hdf5File,
                                args.stime,
-                               args.etime)
+                               args.etime,
+                               CHAN_LIST)
 
-    tc1_VALI_4 = [recData['tcs:drives:driveMCS.VALI'][0],
-                 np.array([e[4] for e in recData['tcs:drives:driveMCS.VALI'][1]])]
-    tc1_VALA_0 = [recData['tcs:drives:driveCRS.VALA'][0],
-                 [e[0] for e in recData['tcs:drives:driveCRS.VALA'][1]]]
-    mcs_j_VALA_0 = [recData['mc:followA.J'][0],
-                 [e[0] for e in recData['mc:followA.J'][1]]]
-
-    mcs_dmd_diff = ped.diffData(mcs_j_VALA_0)
-    cr_dmd_val0_diff = ped.diffData(tc1_VALA_0)
-    tc_diff_norm, tc_diff_outl = ped.filter_outliers(tc1_VALI_4,
-                                                     0.00,
-                                                     0.22)
-    mc_diff_norm, mc_diff_outl = ped.filter_outliers(mcs_dmd_diff,
-                                                     0.00,
-                                                     0.22)
     ta_tcs_norm, ta_tcs_outl = ped.filter_outliers(recData['ta:tcs:diff'],
                                                      0.00,
                                                      0.006)
@@ -108,7 +100,6 @@ if __name__ == '__main__':
     lim_bin_ta = (0, 6)
     lim_bin_ta_out = (np.amin(ta_min_array), np.amax(ta_max_array))
 
-    # if 'mc:azDemandPos' in recData.keys():
     mc_azDmd = DataAx(recData['mc:azDemandPos'],
                       'xkcd:grass green',
                       label='mc:azDemandPos',
@@ -121,109 +112,6 @@ if __name__ == '__main__':
                       ylabel='Position [deg]',
                       linewidth=1.25)
 
-    tcs_drvMCSvI4 = DataAx(tc1_VALI_4,
-                            'g',
-                            height=2,
-                            linestyle='',
-                            marker='o',
-                            ylims=ylim_dr_mcs,
-                            label='tc1 -> mcs loop time diff',
-                            ylabel="Difference\n[sec]",
-                            linewidth=2.50)
-
-    tcs_drvCRSvA0 = DataAx(cr_dmd_val0_diff,
-                            'b',
-                            height=2,
-                            linestyle='',
-                            marker='o',
-                            ylims=ylim_dr_crcs,
-                            label='tc1 -> cr loop time diff',
-                            ylabel="Difference\n[sec]",
-                            linewidth=2.50)
-
-    tcs_drvMCSvI4_norm = DataAx(tc_diff_norm,
-                               'g',
-                               linestyle='',
-                               marker='o',
-                               label='tc/mc tx time diff',
-                               ylabel="Difference\n[sec]",
-                               linewidth=2.50)
-                                # ylims=ylim_dr_mcs,
-
-    tcs_drvMCSvI4_outl = DataAx(tc_diff_outl,
-                                'r',
-                                linestyle='',
-                                marker='o',
-                                label='tc/mc tx time diff outl',
-                                ylabel="Difference\n[sec]",
-                                linewidth=2.50)
-                                # ylims=ylim_dr_mcs,
-
-    mcs_followAJ0_norm = DataAx(mc_diff_norm,
-                                'b',
-                                linestyle='',
-                                marker='o',
-                                label='mcs reception time diff',
-                                ylabel="Difference\n[sec]",
-                                linewidth=2.50)
-    # ylims=ylim_dr_mcs,
-
-    mcs_followAJ0_outl = DataAx(mc_diff_outl,
-                                'r',
-                                linestyle='',
-                                marker='o',
-                                label='mcs rx time diff outl',
-                                ylabel="Difference\n[sec]",
-                                linewidth=2.50)
-    # ylims=ylim_dr_mcs,
-
-    tcs_drvMCSvI4_hist = DataAx(tc1_VALI_4[1],
-                                'g',
-                                label='tc1 -> mcs histogram time diff',
-                                ylabel="No Samples\n[un]",
-                                xlabel="Time diff [sec]",
-                                histbins=30,
-                                linewidth=2.50)
-
-    tcs_drvCRSvA0_hist = DataAx(cr_dmd_val0_diff[1],
-                                'b',
-                                label='tc1 -> cr histogram time diff',
-                                ylabel="No Samples\n[un]",
-                                xlabel="Time diff [sec]",
-                                histbins=30,
-                                linewidth=2.50)
-
-    tcs_drvMCSvI4_nrm_hist = DataAx(tc_diff_norm[1],
-                                    'g',
-                                    label='tc/mc tx time diff hist',
-                                    ylabel="No Samples\n[un]",
-                                    xlabel="Time diff [sec]",
-                                    histbins=30,
-                                    linewidth=2.50)
-
-    tcs_drvMCSvI4_out_hist = DataAx(tc_diff_outl[1],
-                                    'r',
-                                    label='tc/mc tx time diff outl hist',
-                                    ylabel="No Samples\n[un]",
-                                    xlabel="Time diff [sec]",
-                                    histbins=30,
-                                    linewidth=2.50)
-
-    mcs_followAJ0_norm_hist = DataAx(mc_diff_norm[1],
-                                     'b',
-                                     label='mcs rx time diff hist',
-                                     ylabel="No Samples\n[un]",
-                                     xlabel="Time diff [sec]",
-                                     histbins=30,
-                                     linewidth=2.50)
-
-    mcs_followAJ0_out_dist = DataAx(mc_diff_outl[1],
-                                     'r',
-                                     label='mcs rx time diff outl hist',
-                                     ylabel="No Samples\n[un]",
-                                     xlabel="Time diff [sec]",
-                                     histbins=30,
-                                     linewidth=2.50)
 
     timeaudit_tcs_norm = DataAx(ta_tcs_norm,
                           'r',
