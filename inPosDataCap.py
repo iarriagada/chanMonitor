@@ -44,8 +44,8 @@ def parse_args():
     parser_gea.add_argument('tw',
                             nargs=2,
                             help='Time window for data extraction\
-                            e.g.: "191121T020000"\
-                            "191122T030000"')
+                            e.g.: "191121T0200"\
+                            "191122T0300"')
 
     parser_gea.add_argument('-rn',
                             '--recname',
@@ -93,38 +93,33 @@ def parse_args():
                            help='User defined start time of data capture.\
                            Format yymmddThhmm')
 
-    parser_ca.add_argument('-tc',
-                           '--timecapture',
-                           dest='tcap',
-                           default='time',
-                           help='Where to get timestamp, i.e "time", "native"')
-
     args = parser.parse_args()
     args.func(args)
     return args
 
-def monChan(chanNames, frm):
+def monChan(chanNames):
     print('EPICS_CA_ADDR_LIST = {}'.format(os.environ['EPICS_CA_ADDR_LIST']))
-    # Initialize empty arrays
-    chanList = []
-    cnameList = []
-    chanString = []
+    # Initialize empty dictionary
+    chan_dict = {}
     # Go through EPICS channel names in array and initializes PV object
     for cn in chanNames:
-        if cn in cnameList:
+        if cn in chan_dict.keys():
             print('{} repeated in the list'.format(cn))
             continue
         conn_ctr = 1 # Connection counter
         print("Connecting to {}...".format(cn))
         # Go into connection loop
         while True:
-            chan = epics.PV(cn, form=frm)
+            chan = epics.PV(cn)
             time.sleep(0.25) # needed to give the PV object time to connect
             chanSt = repr(chan)
             # Check if PV object connected successfully and exit loop
             if re.search(STATUS_STR,chanSt) == None:
-                cnameList.append(cn)
-                chanList.append(chan)
+                chan_dict[cn] = {}
+                chan_dict[cn]['chan'] = chan
+                chan_dict[cn]['value'] = []
+                chan_dict[cn]['timestamp'] = []
+                chan_dict[cn]['string'] = False
                 print("Connected!")
                 break
             conn_ctr += 1
@@ -134,22 +129,28 @@ def monChan(chanNames, frm):
                 print("{0} didn't connect after {1} tries".format(cn, conn_ctr-1))
                 break
 
-    for ch in chanList:
-        if re.search('string', ch.info):
-            chanString.append(1)
-        else:
-            chanString.append(0)
-    # Return array with PV object and channel names
-    return [chanList, cnameList, chanString]
+    for ch in chan_dict:
+        if re.search('string', chan_dict[ch]['chan'].info):
+            chan_dict[ch]['string'] = True
+    # Return dictionary with connected channels
+    return chan_dict
 
-def createH5F(fname, rInfo, rDic):
+def createH5F(fname, rDic):
     # Create and initialize .h5 file
     recHF = h5py.File(fname, 'w')
-    groupsHF = [[recHF.create_group(name),name] for name in rInfo]
+    groupsHF = [[recHF.create_group(name),name] for name in rDic]
     for g in groupsHF:
-        g[0].create_dataset('timestamp', data=rDic[g[1]][0])
-        g[0].create_dataset('value', data=rDic[g[1]][1])
+        g[0].create_dataset('timestamp', data=rDic[g[1]]['timestamp'])
+        g[0].create_dataset('value', data=rDic[g[1]]['value'])
     print('Data capture complete with file: {}'.format(fname))
+
+def on_change(pvname=None, value=None, timestamp=None, **kw):
+    kw['rdict'][pvname]['timestamp'].append(timestamp)
+    if kw['rdict'][pvname]['string']:
+        kw['rdict'][pvname]['value'] = np.append(kw['rdict'][pvname]['value'],
+                                              np.array(value, dtype='S32'))
+    else:
+        kw['rdict'][pvname]['value'].append(value)
 
 def on_press_thread(run_flag):
     key_press = input()
@@ -168,7 +169,6 @@ def caRealTimeCap(args):
     startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
     print('Starting data capture at', startDateP)
     fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
-    currTime = datetime.now()
     dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
                         minutes=int(args.rtMin))
     # Read file with record names, ignore comments
@@ -176,54 +176,33 @@ def caRealTimeCap(args):
         recList = [l.split('#')[0].strip()
                    for l in f.read().splitlines() if l.split('#')[0]]
     # Connect to the EPICS channels
-    recInfo = monChan(recList, args.tcap)
+    rec_dict = monChan(recList)
     # If no channel connected, abort the program
-    if not(recInfo[0]):
+    if not(rec_dict):
         sys.exit('No channels connected, aborting')
-    # Create Dictionary for each EPICS Record data
-    recDic = {name:[[True],[],chan, isStr] for chan,name,isStr in np.array(recInfo).T}
-    firstPass = True # First data value capture flag
-    loopcnt = 0
+    # Start the monitors
+    for cname in rec_dict:
+        print("Starting monitor for {}".format(cname))
+        # Add the on_change routine and pass the record dictionary as argument
+        rec_dict[cname]['chan'].add_callback(on_change, rdict=rec_dict)
     # Start "abort data capture" thread
     _thread.start_new_thread(on_press_thread, (run_flag,))
     print('To stop capture now: x + [Enter]')
-    while (((currTime - startTime) < dataCapDur) and run_flag[0]):
-        startWhile = datetime.now()
-        for name in recInfo[1]:
-            # Get timestamp
-            timestamp = recDic[name][2].timestamp
-            # Compare timestamp with previous timestamp, skip to next channel
-            # if equal
-            if timestamp == recDic[name][0][-1]:
-                continue
-            # Append timestamp to array
-            recDic[name][0].append(timestamp)
-            # if it's the first pass, reinitialize array with first timestamp
-            if firstPass:
-                recDic[name][0]=[timestamp]
-            # Store channel value
-            value = recDic[name][2].value
-            # if value is not a string, append value in array and continue with
-            # next channel
-            if not(recDic[name][3]):
-                recDic[name][1].append(value)
-                continue
-            recDic[name][1] = np.append(recDic[name][1],
-                                        np.array(value, dtype='S32'))
-        loopcnt += 1
-        currTime = datetime.now()
-        loopTime = (currTime - startWhile).total_seconds()
-        # Set loop time to 100 ms minus the time it takes the loop to process
-        waitTime = 0.1 - loopTime
-        # Set first pass flag to false, this will only matter after the first
-        # cycle through the channels
-        firstPass = False
-        if loopTime > 0.1:
-            print("Loop {1} took too long: {0} [s]".format(loopTime, loopcnt))
-            continue
-        time.sleep(waitTime)
+    wait_time = 0.005 # Are 5 ms enough for while loop not to hog the CPU?
+    init_time = datetime.now()
+    curr_time = init_time
+    # Enter loop and wait for the callbacks to fill up the record dict
+    while (((curr_time - init_time) < dataCapDur) and run_flag[0]):
+        time.sleep(wait_time)
+        curr_time = datetime.now()
+    # Once data capture ends, stop the monitors. I don't want to continue
+    # capturing data at this point
+    print("Stopping monitors")
+    for cname in rec_dict:
+        rec_dict[cname]['chan'].clear_callbacks()
+    print("Done!")
 
-    createH5F(fileName, recInfo[1], recDic)
+    createH5F(fileName, rec_dict)
 
 def geaExtraction(args):
     startTime = datetime.now() # starting time of the capture
@@ -236,13 +215,13 @@ def geaExtraction(args):
                        for l in f.read().splitlines() if l.split('#')[0]]
     else:
         recList = [args.recFileG]
-    recDic = {name:[[],[]] for name in recList}
+        recDic = {name:{'value':[], 'timestamp':[]} for name in recList}
     chan_count = 0
     # Format the start and end date as datetime objects, with the specified
     # format
     try:
-        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M%S')
-        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M%S')
+        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M')
+        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M')
     except ValueError as err:
         sys.exit("ValueError timewindow: {}".format(err))
     for recname in recList:
@@ -250,13 +229,13 @@ def geaExtraction(args):
         if not(recDataT):
             continue
         recData = np.array(recDataT).T
-        recDic[recname][0] = recData[0]
-        recDic[recname][1] = recData[1]
+        recDic[recname]['timestamp'] = recData[0]
+        recDic[recname]['value'] = recData[1]
         chan_count += 1
 
     if not(chan_count):
         sys.exit('No channels were extracted')
-    createH5F(fileName, recList, recDic)
+    createH5F(fileName, recDic)
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments

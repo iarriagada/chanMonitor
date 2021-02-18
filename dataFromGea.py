@@ -43,10 +43,10 @@ def geaExtractor(record, ts, te, site='gs'):
     # Get IOC top from the name of the record, then look in the GEA keyword
     # dictionary
     archiver = geaKeys[record.split(':')[0]]
-    # Define the timedelta to switch date to UTC and define a delta of 15
+    # Define the timedelta to switch date to UTC and define a delta of 5
     # minutes to get data from GEA
     td = timedelta(hours=time_zone[site])
-    tq = timedelta(minutes=15)
+    tq = timedelta(minutes=5)
     tsc = ts + td
     tec = te + td
     # Determine the total amount of time to be extracted
@@ -71,7 +71,7 @@ def geaExtractor(record, ts, te, site='gs'):
     sys.stdout.write('\r' + 'Progress: 0.00%')
     try:
         while tec > tw:
-            # Get a window of 15 minutes of data from GEA. For some reason
+            # Get a window of 5 minutes of data from GEA. For some reason
             # umknown to me, you can only extract 15 min worth of data at a
             # time
             tss = (tw - datetime.utcfromtimestamp(0)).total_seconds()
