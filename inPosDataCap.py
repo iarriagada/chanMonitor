@@ -152,14 +152,9 @@ def on_change(pvname=None, value=None, timestamp=None, **kw):
     else:
         kw['rdict'][pvname]['value'].append(value)
 
-def on_press_thread(run_flag):
-    key_press = input()
-    if key_press == 'x':
-        print('Stopping capture')
-        run_flag[0] = False
-
 def caRealTimeCap(args):
     run_flag = [True]
+    abort_flag = False
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
         startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
@@ -186,23 +181,31 @@ def caRealTimeCap(args):
         # Add the on_change routine and pass the record dictionary as argument
         rec_dict[cname]['chan'].add_callback(on_change, rdict=rec_dict)
     # Start "abort data capture" thread
-    _thread.start_new_thread(on_press_thread, (run_flag,))
-    print('To stop capture now: x + [Enter]')
+    print('To stop capture now: <Ctrl>-c')
     wait_time = 0.005 # Are 5 ms enough for while loop not to hog the CPU?
     init_time = datetime.now()
     curr_time = init_time
     # Enter loop and wait for the callbacks to fill up the record dict
-    while (((curr_time - init_time) < dataCapDur) and run_flag[0]):
-        time.sleep(wait_time)
-        curr_time = datetime.now()
-    # Once data capture ends, stop the monitors. I don't want to continue
-    # capturing data at this point
-    print("Stopping monitors")
-    for cname in rec_dict:
-        rec_dict[cname]['chan'].clear_callbacks()
-    print("Done!")
-
-    createH5F(fileName, rec_dict)
+    # Catch a keyboard interrupt to abort data capture
+    try:
+        while (((curr_time - init_time) < dataCapDur) and run_flag[0]):
+            time.sleep(wait_time)
+            curr_time = datetime.now()
+    except KeyboardInterrupt as err:
+        print("\nEnding data capture early?")
+        choice = input("Generate data file? (Y/n): ")
+        if choice in ['N', 'n']:
+            abort_flag = True
+    finally:
+        # Check if script needs to end without generating data file
+        if abort_flag:
+            sys.exit('Aborting capture')
+        # Stop the monitors. We don't want to continue capturing data
+        print("Stopping monitors")
+        for cname in rec_dict:
+            rec_dict[cname]['chan'].clear_callbacks()
+        print("Done!")
+        createH5F(fileName, rec_dict)
 
 def geaExtraction(args):
     startTime = datetime.now() # starting time of the capture
