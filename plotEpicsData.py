@@ -334,21 +334,28 @@ def extract_hdf5(hdf5File, start_time=None,
     for data_group in data_files:
         for cn in data_group:
             channel_list.append(cn)
-    # If mask is defined, abort execution if channel from mask is missing from
-    # channel list. If mask is not defined, make it the same as channel list
+    # If there's a channel mask defined, check if channels are in data set.
     if channel_mask:
-        for chan in channel_mask:
-            if not(chan in channel_list):
-                sys.exit('{} is missing from the dataset'.format(chan))
+        mask = [chan in channel_list for chan in channel_mask]
+        if not(all(mask)):
+            # Print all missing channels and abort execution
+            print('Channels missing from dataset!!!')
+            for ch in np.array(channel_mask)[mask]:
+                print(ch)
+            sys.exit('Aborting')
     else:
+        # If there's no mask defined, make it the data channel list.
         channel_mask = channel_list
 
     # Extract record names and create an array with group object and name of
     # group
+    aux_mask = []
     for data_group in data_files:
-        for rn in data_group:
+        for rn in channel_mask:
             # Check to see if data name is in channel mask, if not, skip it
-            if not(rn in channel_mask):
+            if not(rn in data_group.keys()):
+                # Create array with leftover channels
+                aux_mask.append(rn)
                 continue
             timestamps = data_group.get(rn).get('timestamp')[0:]
             values = data_group.get(rn).get('value')[0:]
@@ -362,8 +369,7 @@ def extract_hdf5(hdf5File, start_time=None,
                 timestamps = timestamps[1:]
                 recData[rn] =[timestamps[filt_mask[1:]],
                               values[filt_mask[1:]]]
-
-    # print(recData.keys())
+        channel_mask = aux_mask
     return recData
 
 def list_hdf5(hdf5File):

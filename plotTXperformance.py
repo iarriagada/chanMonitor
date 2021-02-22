@@ -11,6 +11,7 @@ CHAN_LIST = ['tcs:drives:driveMCS.VALI',
              'tcs:drives:driveCRS.VALA',
              'mc:azDemandPos',
              'mc:azCurrentPos',
+             'mc:azPosError',
              'mc:followA.J']
 
 def parse_args():
@@ -104,6 +105,12 @@ if __name__ == '__main__':
                       label='mc:azCurrentPos',
                       ylabel='Position [deg]',
                       linewidth=1.25)
+
+    mc_azPosErr = DataAx(recData['mc:azPosError'],
+                      'xkcd:yellow brown',
+                      label='mc:azCurrentPos',
+                      ylabel='Position [deg]',
+                      linewidth=1.5)
 
     tcs_drvMCSvI_cnt = DataAx(tcs_cnt_diff,
                               'xkcd:pinkish purple',
@@ -261,10 +268,11 @@ if __name__ == '__main__':
                                     linewidth=2.50)
 
 
-    plts = DataAxePlotter(ncols=4)
+    plts = DataAxePlotter(ncols=3)
 
-    plts.Axe['c1']['az_dmd'] = mc_azDmd
-    plts.Axe['c1']['az_pos'] = DataAx.update_axe(mc_azPos, shaxname='az_dmd')
+    # plts.Axe['c1']['az_dmd'] = mc_azDmd
+    # plts.Axe['c1']['az_pos'] = DataAx.update_axe(mc_azPos, shaxname='az_dmd')
+    plts.Axe['c1']['az_error'] = mc_azPosErr
     plts.Axe['c1']['tcs_vali_cnt'] = tcs_drvMCSvI_cnt
     plts.Axe['c1']['mcs_dmd_tx'] = DataAx.update_axe(tcs_drvMCSvI4_norm,
                                                          marksize=2)
@@ -274,29 +282,29 @@ if __name__ == '__main__':
                                                          marksize=2)
     plts.Axe['c1']['mcs_dmd_rx_out'] = DataAx.update_axe(mcs_followAJ0_outl,
                                                          marksize=2)
-    plts.Axe['c1']['cr_dmd_rx'] = DataAx.update_axe(crs_followAJ0_norm,
-                                                         marksize=2)
-    plts.Axe['c1']['cr_dmd_rx_out'] = DataAx.update_axe(crs_followAJ0_outl,
-                                                         marksize=2)
+    # plts.Axe['c1']['cr_dmd_rx'] = DataAx.update_axe(crs_followAJ0_norm,
+                                                         # marksize=2)
+    # plts.Axe['c1']['cr_dmd_rx_out'] = DataAx.update_axe(crs_followAJ0_outl,
+                                                         # marksize=2)
     plts.Axe['c2']['mcs_dtx_hist'] = DataAx.update_axe(tcs_drvMCSvI4_nrm_hist,
                                                        limsbins=lim_bin_mcs)
     norm_hist_mstax = plts.Axe['c2']['mcs_dtx_hist']
     plts.Axe['c2']['mcs_drx_hist'] = DataAx.update_axe(mcs_followAJ0_norm_hist,
                                                        mstax=norm_hist_mstax,
                                                        limsbins=lim_bin_mcs)
-    plts.Axe['c2']['crs_dtx_hist'] = DataAx.update_axe(tcs_drvCRSvA0_nrm_hist,
-                                                       mstax=norm_hist_mstax,
-                                                       limsbins=lim_bin_mcs)
+    # plts.Axe['c2']['crs_dtx_hist'] = DataAx.update_axe(tcs_drvCRSvA0_nrm_hist,
+                                                       # mstax=norm_hist_mstax,
+                                                       # limsbins=lim_bin_mcs)
     plts.Axe['c3']['mcs_dtx_out_hist'] = DataAx.update_axe(tcs_drvMCSvI4_out_hist,
                                                        limsbins=lim_bin_mcs_out)
     outl_hist_mstax = plts.Axe['c3']['mcs_dtx_out_hist']
     plts.Axe['c3']['mcs_drx_out_hist'] = DataAx.update_axe(mcs_followAJ0_out_hist,
                                                        mstax=outl_hist_mstax,
                                                        limsbins=lim_bin_mcs_out)
-    plts.Axe['c3']['crs_dtx_out_hist'] = DataAx.update_axe(tcs_drvCRSvA0_out_hist,
-                                                       mstax=outl_hist_mstax,
-                                                       limsbins=lim_bin_mcs_out)
-    plts.Axe['c4']['tcs_vali_cnt_hist'] = tcs_drvMCSvI_cnt_hist
+    # plts.Axe['c3']['crs_dtx_out_hist'] = DataAx.update_axe(tcs_drvCRSvA0_out_hist,
+                                                       # mstax=outl_hist_mstax,
+                                                       # limsbins=lim_bin_mcs_out)
+    # plts.Axe['c4']['tcs_vali_cnt_hist'] = tcs_drvMCSvI_cnt_hist
 
     plts.positionPlot()
     plts.plotConfig('Fast Track Analysis')

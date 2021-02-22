@@ -98,7 +98,10 @@ def parse_args():
     return args
 
 def monChan(chanNames):
-    print('EPICS_CA_ADDR_LIST = {}'.format(os.environ['EPICS_CA_ADDR_LIST']))
+    try:
+        print('EPICS_CA_ADDR_LIST = {}'.format(os.environ['EPICS_CA_ADDR_LIST']))
+    except KeyError as err:
+        sys.exit('EPICS_CA_ADDR_LIST is not defined. Aborting')
     # Initialize empty dictionary
     chan_dict = {}
     # Go through EPICS channel names in array and initializes PV object
@@ -218,7 +221,7 @@ def geaExtraction(args):
                        for l in f.read().splitlines() if l.split('#')[0]]
     else:
         recList = [args.recFileG]
-        recDic = {name:{'value':[], 'timestamp':[]} for name in recList}
+    recDic = {name:{'value':[], 'timestamp':[]} for name in recList}
     chan_count = 0
     # Format the start and end date as datetime objects, with the specified
     # format
