@@ -59,7 +59,7 @@ def parse_args():
                                      help='Use this option to extract data\
                                      from channel access')
 
-    parser_ca.set_defaults(func=caRealTimeCap)
+    parser_ca.set_defaults(func=ca_realtime_cap)
 
     parser_ca.add_argument('recFile',
                            metavar='REC-FILE',
@@ -97,7 +97,98 @@ def parse_args():
     args.func(args)
     return args
 
-def monChan(chanNames):
+def geaExtraction(args):
+    startTime = datetime.now() # starting time of the capture
+    startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
+    fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
+    print(args.tw)
+    if not(args.rn):
+        with open(args.recFileG, 'r') as f:
+            recList = [l.split('#')[0].strip()
+                       for l in f.read().splitlines() if l.split('#')[0]]
+    else:
+        recList = [args.recFileG]
+    recDic = {name:{'value':[], 'timestamp':[]} for name in recList}
+    chan_count = 0
+    # Format the start and end date as datetime objects, with the specified
+    # format
+    try:
+        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M')
+        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M')
+    except ValueError as err:
+        sys.exit("ValueError timewindow: {}".format(err))
+    for recname in recList:
+        recDataT = geaExtractor(recname, startDate, endDate, args.site)
+        if not(recDataT):
+            continue
+        recData = np.array(recDataT).T
+        recDic[recname]['timestamp'] = recData[0]
+        recDic[recname]['value'] = recData[1]
+        chan_count += 1
+
+    if not(chan_count):
+        sys.exit('No channels were extracted')
+    createH5F(fileName, recDic)
+
+def ca_realtime_cap(args):
+    startTime = datetime.now() # starting time of the capture
+    if not(args.sttime == ''):
+        startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
+    while datetime.now() < startTime:
+        time.sleep(1)
+    startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
+    startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
+    print('Starting data capture at', startDateP)
+    fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
+    dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
+                        minutes=int(args.rtMin)).total_seconds()
+    # Read file with record names, ignore comments
+    with open(args.recFile, 'r') as f:
+        recList = [l.split('#')[0].strip()
+                   for l in f.read().splitlines() if l.split('#')[0]]
+    record_dict = caMonitor(recList, dataCapDur)
+    createH5F(fileName, record_dict)
+
+def caMonitor(chan_list, capture_interval):
+    abort_flag = False
+    # Connect to the EPICS channels
+    rec_dict = channel_connect(chan_list)
+    # If no channel connected, abort the program
+    if not(rec_dict):
+        sys.exit('No channels connected, aborting')
+    # Start the monitors
+    for cname in rec_dict:
+        print("Starting monitor for {}".format(cname))
+        # Add the on_change routine and pass the record dictionary as argument
+        rec_dict[cname]['chan'].add_callback(on_change, rdict=rec_dict)
+    # Start "abort data capture" thread
+    print('To stop capture now: <Ctrl>-c')
+    wait_time = 0.005 # Are 5 ms enough for while loop not to hog the CPU?
+    init_time = datetime.now()
+    curr_time = init_time
+    # Enter loop and wait for the callbacks to fill up the record dict
+    # Catch a keyboard interrupt to abort data capture
+    try:
+        while ((curr_time - init_time).total_seconds() < capture_interval):
+            time.sleep(wait_time)
+            curr_time = datetime.now()
+    except KeyboardInterrupt as err:
+        print("\nEnding data capture early?")
+        choice = input("Generate data file? (Y/n): ")
+        if choice in ['N', 'n']:
+            abort_flag = True
+    finally:
+        # Check if script needs to end without generating data file
+        if abort_flag:
+            sys.exit('Aborting capture')
+        # Stop the monitors. We don't want to continue capturing data
+        print("Stopping monitors")
+        for cname in rec_dict:
+            rec_dict[cname]['chan'].clear_callbacks()
+        print("Done!")
+        return rec_dict
+
+def channel_connect(chanNames):
     try:
         print('EPICS_CA_ADDR_LIST = {}'.format(os.environ['EPICS_CA_ADDR_LIST']))
     except KeyError as err:
@@ -154,94 +245,6 @@ def on_change(pvname=None, value=None, timestamp=None, **kw):
                                               np.array(value, dtype='S32'))
     else:
         kw['rdict'][pvname]['value'].append(value)
-
-def caRealTimeCap(args):
-    run_flag = [True]
-    abort_flag = False
-    startTime = datetime.now() # starting time of the capture
-    if not(args.sttime == ''):
-        startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
-    while datetime.now() < startTime:
-        time.sleep(1)
-    startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
-    startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
-    print('Starting data capture at', startDateP)
-    fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
-    dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
-                        minutes=int(args.rtMin))
-    # Read file with record names, ignore comments
-    with open(args.recFile, 'r') as f:
-        recList = [l.split('#')[0].strip()
-                   for l in f.read().splitlines() if l.split('#')[0]]
-    # Connect to the EPICS channels
-    rec_dict = monChan(recList)
-    # If no channel connected, abort the program
-    if not(rec_dict):
-        sys.exit('No channels connected, aborting')
-    # Start the monitors
-    for cname in rec_dict:
-        print("Starting monitor for {}".format(cname))
-        # Add the on_change routine and pass the record dictionary as argument
-        rec_dict[cname]['chan'].add_callback(on_change, rdict=rec_dict)
-    # Start "abort data capture" thread
-    print('To stop capture now: <Ctrl>-c')
-    wait_time = 0.005 # Are 5 ms enough for while loop not to hog the CPU?
-    init_time = datetime.now()
-    curr_time = init_time
-    # Enter loop and wait for the callbacks to fill up the record dict
-    # Catch a keyboard interrupt to abort data capture
-    try:
-        while (((curr_time - init_time) < dataCapDur) and run_flag[0]):
-            time.sleep(wait_time)
-            curr_time = datetime.now()
-    except KeyboardInterrupt as err:
-        print("\nEnding data capture early?")
-        choice = input("Generate data file? (Y/n): ")
-        if choice in ['N', 'n']:
-            abort_flag = True
-    finally:
-        # Check if script needs to end without generating data file
-        if abort_flag:
-            sys.exit('Aborting capture')
-        # Stop the monitors. We don't want to continue capturing data
-        print("Stopping monitors")
-        for cname in rec_dict:
-            rec_dict[cname]['chan'].clear_callbacks()
-        print("Done!")
-        createH5F(fileName, rec_dict)
-
-def geaExtraction(args):
-    startTime = datetime.now() # starting time of the capture
-    startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
-    fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
-    print(args.tw)
-    if not(args.rn):
-        with open(args.recFileG, 'r') as f:
-            recList = [l.split('#')[0].strip()
-                       for l in f.read().splitlines() if l.split('#')[0]]
-    else:
-        recList = [args.recFileG]
-    recDic = {name:{'value':[], 'timestamp':[]} for name in recList}
-    chan_count = 0
-    # Format the start and end date as datetime objects, with the specified
-    # format
-    try:
-        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M')
-        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M')
-    except ValueError as err:
-        sys.exit("ValueError timewindow: {}".format(err))
-    for recname in recList:
-        recDataT = geaExtractor(recname, startDate, endDate, args.site)
-        if not(recDataT):
-            continue
-        recData = np.array(recDataT).T
-        recDic[recname]['timestamp'] = recData[0]
-        recDic[recname]['value'] = recData[1]
-        chan_count += 1
-
-    if not(chan_count):
-        sys.exit('No channels were extracted')
-    createH5F(fileName, recDic)
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments
