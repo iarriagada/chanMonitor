@@ -31,7 +31,7 @@ gea_xml_server = {
 
 time_zone = {
     'gs':3,
-    'gn':3
+    'gn':10
 }
 
 def geaExtractor(record, ts, te, site='gs'):
@@ -39,7 +39,7 @@ def geaExtractor(record, ts, te, site='gs'):
     This method is used to extract data from GEA.
     It uses the name of the record to determine the archiver to be used
     '''
-    geaData = []
+    geaData = {'timestamp':[], 'value':[]}
     # Get IOC top from the name of the record, then look in the GEA keyword
     # dictionary
     archiver = geaKeys[record.split(':')[0]]
@@ -84,15 +84,17 @@ def geaExtractor(record, ts, te, site='gs'):
             # Auxiliary array for the 15 min of data
             # Check to see if the record value is a string, and create a numpy
             # array with the proper type
+            timestamps = [val['secs'] + val['nano']/1000000000\
+                          for val in geaRecord[0]['values']]
+
+            geaData['timestamp'] += timestamps
             if not(geaRecord[0]['type']):
-                geaDataAux = [[val['secs'] + val['nano']/1000000000,
-                            np.array(val['value'][0], dtype='S32')]\
-                              for val in geaRecord[0]['values']]
+                values = np.array([val['value'][0]\
+                              for val in geaRecord[0]['values']], dtype='S32')
+                geaData['value'] = np.concatenate((geaData['value'], values))
             else:
-                geaDataAux = [[val['secs'] + val['nano']/1000000000,
-                            val['value'][0]] for val in geaRecord[0]['values']]
-            # Final array to be returned
-            geaData = geaData + geaDataAux
+                values = [val['value'] for val in geaRecord[0]['values']]
+                geaData['value'] += values
             # Advance time window
             tw = tw + tq
             # Calculate and display progress
@@ -100,9 +102,11 @@ def geaExtractor(record, ts, te, site='gs'):
             progress = round((timeSpan / timeTotal) * 100, 2)
             sys.stdout.write('\r' + 'Progress: ' + str(progress) + '% ')
         sys.stdout.write('\r' + 'Progress: 100.00%\n')
-        print('size of data array:', len(geaData))
-        print('First timestamp:', datetime.fromtimestamp(geaData[0][0]))
-        print('Last timestamp:', datetime.fromtimestamp(geaData[-1][0]))
+        print('size of data array:', len(geaData['timestamp']))
+        print('First timestamp:',
+              datetime.fromtimestamp(geaData['timestamp'][0]))
+        print('Last timestamp:',
+              datetime.fromtimestamp(geaData['timestamp'][-1]))
         return geaData
     except Exception as error:
         print("\nChannel {} extraction failed".format(record))

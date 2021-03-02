@@ -8,7 +8,6 @@ import time
 import h5py
 import re
 import numpy as np
-import _thread
 
 from datetime import datetime, timedelta
 from dataFromGea import geaExtractor
@@ -118,12 +117,13 @@ def geaExtraction(args):
     except ValueError as err:
         sys.exit("ValueError timewindow: {}".format(err))
     for recname in recList:
-        recDataT = geaExtractor(recname, startDate, endDate, args.site)
-        if not(recDataT):
+        recData = geaExtractor(recname, startDate, endDate, args.site)
+        if not(recData):
             continue
-        recData = np.array(recDataT).T
-        recDic[recname]['timestamp'] = recData[0]
-        recDic[recname]['value'] = recData[1]
+        # recData = np.array(recDataT).T
+        # recDic[recname]['timestamp'] = recData[0]
+        # recDic[recname]['value'] = recData[1]
+        recDic[recname] = recData
         chan_count += 1
 
     if not(chan_count):

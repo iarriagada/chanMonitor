@@ -306,7 +306,7 @@ def extract_hdf5(hdf5File, start_time=None,
             print("ValueError --starttime: {}".format(err))
             sys.exit()
     else:
-        stime = 0
+        stime = 0.0
     if end_time:
         try:
             etime_dt = datetime.strptime(end_time, '%y%m%dT%H%M')
