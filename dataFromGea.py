@@ -93,7 +93,9 @@ def geaExtractor(record, ts, te, site='gs'):
                               for val in geaRecord[0]['values']], dtype='S32')
                 geaData['value'] = np.concatenate((geaData['value'], values))
             else:
-                values = [val['value'] for val in geaRecord[0]['values']]
+                values = [val['value']\
+                          if (len(val['value'])>1)\
+                          else val['value'][0] for val in geaRecord[0]['values']]
                 geaData['value'] += values
             # Advance time window
             tw = tw + tq
