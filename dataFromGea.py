@@ -3,7 +3,7 @@
 import xmlrpc.client as xmlClient
 import numpy as np
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, tzinfo
 
 geaKeys = {
     'ag':'ag',
@@ -31,11 +31,17 @@ gea_xml_server = {
 }
 
 time_zone = {
-    'gs':3,
-    'gn':10
+    'gs':timezone(timedelta(hours=-4), 'CLT'),
+    'gn':timezone(timedelta(hours=-10), 'HST'),
+    'utc':timezone.utc
 }
 
-def geaExtractor(record, ts, te, site='gs'):
+utc_tz = timezone.utc
+def utc2site_time(timestamp, site):
+    time_dt_site = datetime.fromtimestamp(timestamp, tz=time_zone[site])
+    return time_dt_site
+
+def geaExtractor(record, tsc, tec, site='gs'):
     '''
     This method is used to extract data from GEA.
     It uses the name of the record to determine the archiver to be used
@@ -46,10 +52,7 @@ def geaExtractor(record, ts, te, site='gs'):
     archiver = geaKeys[record.split(':')[0]]
     # Define the timedelta to switch date to UTC and define a delta of 5
     # minutes to get data from GEA
-    td = timedelta(hours=time_zone[site])
     tq = timedelta(minutes=5)
-    tsc = ts + td
-    tec = te + td
     # Determine the total amount of time to be extracted
     timeTotal = (tec - tsc).total_seconds()
     # Define the start of the time window
@@ -75,28 +78,32 @@ def geaExtractor(record, ts, te, site='gs'):
             # Get a window of 5 minutes of data from GEA. For some reason
             # umknown to me, you can only extract 15 min worth of data at a
             # time
-            tss = (tw - datetime.utcfromtimestamp(0)).total_seconds()
-            tes = ((tw + tq) - datetime.utcfromtimestamp(0)).total_seconds()
+            tss = (tw).timestamp()
+            tes = (tw + tq).timestamp()
             geaRecord = gea.archiver.values(geaDict[archiver], [record],
-                                            int(tss), int(tss - int(tss))*1000000000,
-                                            int(tes), int(tes - int(tes))*1000000000,
+                                            int(tss),
+                                            int(tss - int(tss))*1000000000,
+                                            int(tes),
+                                            int(tes - int(tes))*1000000000,
                                             10000,
                                             0)
             # Auxiliary array for the 15 min of data
             # Check to see if the record value is a string, and create a numpy
             # array with the proper type
             timestamps = [val['secs'] + val['nano']/1000000000\
-                          for val in geaRecord[0]['values']]
+                            for val in geaRecord[0]['values']]
 
             geaData['timestamp'] += timestamps
             if not(geaRecord[0]['type']):
-                values = np.array([val['value'][0]\
-                              for val in geaRecord[0]['values']], dtype='S32')
+                values = np.array([val['value'][0]
+                                   for val in geaRecord[0]['values']],
+                                  dtype='S32')
                 geaData['value'] = np.concatenate((geaData['value'], values))
             else:
-                values = [val['value']\
-                          if (len(val['value'])>1)\
-                          else val['value'][0] for val in geaRecord[0]['values']]
+                values = [val['value']
+                          if (len(val['value'])>1)
+                          else val['value'][0]
+                          for val in geaRecord[0]['values']]
                 geaData['value'] += values
             # Advance time window
             tw = tw + tq
@@ -107,9 +114,9 @@ def geaExtractor(record, ts, te, site='gs'):
         sys.stdout.write('\r' + 'Progress: 100.00%\n')
         print('size of data array:', len(geaData['timestamp']))
         print('First timestamp:',
-              datetime.fromtimestamp(geaData['timestamp'][0]))
+            utc2site_time(geaData['timestamp'][0], site))
         print('Last timestamp:',
-              datetime.fromtimestamp(geaData['timestamp'][-1]))
+            utc2site_time(geaData['timestamp'][-1], site))
         return geaData
     except Exception as error:
         print("\nChannel {} extraction failed".format(record))
@@ -117,6 +124,11 @@ def geaExtractor(record, ts, te, site='gs'):
         return False
 
 if __name__ == '__main__':
-    geaDataArray = geaExtractor('mc:azCurrentPos','2021-01-07 01:00:00',
-                                '2021-01-07 09:00:00', 'gs')
+    ts = '210107T0100'
+    te = '210107T0115'
+    tsd = datetime.strptime(ts, '%y%m%dT%H%M')
+    ted = datetime.strptime(te, '%y%m%dT%H%M')
+
+    geaDataArray = geaExtractor('mc:azCurrentPos',tsd,
+                                ted, 'gn')
 

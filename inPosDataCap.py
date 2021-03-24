@@ -9,7 +9,7 @@ import h5py
 import re
 import numpy as np
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, tzinfo
 from dataFromGea import geaExtractor
 
 STATUS_STR = 'not connected'
@@ -112,17 +112,14 @@ def geaExtraction(args):
     # Format the start and end date as datetime objects, with the specified
     # format
     try:
-        startDate = datetime.strptime(args.tw[0], '%y%m%dT%H%M')
-        endDate = datetime.strptime(args.tw[1], '%y%m%dT%H%M')
+        startDate = site2utc_time(args.tw[0], args.site)
+        endDate = site2utc_time(args.tw[1], args.site)
     except ValueError as err:
         sys.exit("ValueError timewindow: {}".format(err))
     for recname in recList:
         recData = geaExtractor(recname, startDate, endDate, args.site)
         if not(recData):
             continue
-        # recData = np.array(recDataT).T
-        # recDic[recname]['timestamp'] = recData[0]
-        # recDic[recname]['value'] = recData[1]
         recDic[recname] = recData
         chan_count += 1
 
@@ -245,6 +242,14 @@ def on_change(pvname=None, value=None, timestamp=None, **kw):
                                               np.array(value, dtype='S32'))
     else:
         kw['rdict'][pvname]['value'].append(value)
+
+def site2utc_time(time_str, site):
+    site_offs = {'gs':'TZ-0400',
+                 'gn':'TZ-1000'}
+    corr_time = time_str + site_offs[site]
+    time_dt_site = datetime.strptime(corr_time, "%y%m%dT%H%MTZ%z")
+    time_dt_utc = time_dt_site.astimezone(timezone.utc)
+    return time_dt_utc
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments
