@@ -60,7 +60,7 @@ class DataAx:
                  xlabel='', ylims=[], shax=None, height=1, marksize=5,
                  errorline=[], zone=[], alpha=1.0, ticklabels=False,
                  standalone=False, linewidth=1.25, histbins=False,
-                 limsbins=None):
+                 limsbins=None, timezone=None):
         '''
         Creates the plot object
         '''
@@ -98,6 +98,7 @@ class DataAx:
         self.bindata = False
         self.bins = False
         self.patches = False
+        self.timezone = timezone
 
 
     def plot_ax(self, gs, tcells, rows, masterax):
@@ -128,7 +129,7 @@ class DataAx:
         if not(self.histbins):
             dataT, dataY = self.data
             if not(self.rawx):
-                dataT = [datetime.fromtimestamp(ts) for ts in dataT]
+                dataT = [datetime.fromtimestamp(ts, tz=self.timezone) for ts in dataT]
         if self.histbins:
             dataX = self.data
 

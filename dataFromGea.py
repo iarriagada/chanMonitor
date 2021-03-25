@@ -36,7 +36,6 @@ time_zone = {
     'utc':timezone.utc
 }
 
-utc_tz = timezone.utc
 def utc2site_time(timestamp, site):
     time_dt_site = datetime.fromtimestamp(timestamp, tz=time_zone[site])
     return time_dt_site
