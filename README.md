@@ -38,7 +38,7 @@ tcs:drives:driveCRS.VALA
 To extract data from GEA, a plain txt file can be used, or a single channel can be specified. An example GEA is extraction is shown below
 
 <pre>
-$> ./inPosDataCap.py gea gn tcs:drives:driveMCS.VALA "210110T020000" "210110T021500" -rn
+$> ./inPosDataCap.py gea gn tcs:drives:driveMCS.VALA "210110T0200" "210110T0215" -rn
 </pre>
 
 This would capture 15 min of data for `tcs:drives:driveMCS.VALA`, and generate the corresponding hdf5 file.
