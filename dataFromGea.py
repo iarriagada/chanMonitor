@@ -22,7 +22,10 @@ geaKeys = {
     'pwfs1':'wfs',
     'pwfs2':'wfs',
     'gmoi':'wfs',
-    'ta':'temporary'
+    'oiwfs':'wfs',
+    'gm':'gmos',
+    'ta':'temporary',
+    'ws':'gws'
 }
 
 gea_xml_server = {
