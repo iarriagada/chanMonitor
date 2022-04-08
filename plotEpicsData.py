@@ -660,7 +660,8 @@ def fft_generator(data):
     raw_fft_freq = np.fft.fftfreq(len(data[1]), dt)
     # Filter the weird math stuff, leave the real world info
     freq_mask = raw_fft_freq >= 0
-    data_fft = abs(raw_fft[freq_mask])
+    # Scale the Y-axis according to the number of samples
+    data_fft = abs(raw_fft[freq_mask])*(2/len(data[1]))
     data_fft_freq = raw_fft_freq[freq_mask]
     return [data_fft_freq, data_fft]
 
@@ -668,8 +669,9 @@ if __name__ == '__main__':
     x = np.arange(21,step=0.01)
     x2 = np.arange(21,step=0.01)
     y1 = x**2
-    y2 = 50 * (np.sin((2*3.1415*2) * x)) + 25 * (np.sin((2*3.1415*1) * x))
-    y5 = 50 * (np.sin((2*3.1415*2) * x2))
+    y2 = (50*(np.sin((2*3.1415*10)*x)) + 25*(np.sin((2*3.1415*1) * x)) +
+          30*(np.sin((2*3.1415*5)*x)))
+    y5 = 50*(np.sin((2*3.1415*10)*x2))
     y3 = 500 / (x + 1)
     y4 = fft_generator([x,y2])
     plts = DataAxePlotter(2)
@@ -678,7 +680,7 @@ if __name__ == '__main__':
     plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4', rawx=True)
     plts.Axe['c1']['g7'] = DataAx([x2,y5], 'k', linestyle='--', label='g7', rawx=True)
     plts.Axe['c2']['g1'] = DataAx(y4, 'b', ylabel='t5', label='g2', height=2, rawx=True, standalone=True)
-    plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2, rawx=True)
+    # plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2, rawx=True)
     plts.positionPlot()
     plts.plotConfig()
 
