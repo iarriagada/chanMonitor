@@ -290,7 +290,7 @@ class DataAxePlotter:
                         Dax[c][n].ax.set_xlabel(xlabels[c])
         plt.suptitle(title)
         plt.subplots_adjust(top=0.95, bottom=0.1, left=0.085, right=0.95,
-                            hspace=0.125, wspace=0.225)
+                            hspace=0.225, wspace=0.225)
         plt.show()
 
 # DataAxePlotter class end
@@ -339,9 +339,10 @@ def extract_hdf5(hdf5File, start_time=None,
     if channel_mask:
         mask = [chan in channel_list for chan in channel_mask]
         if not(all(mask)):
+            missing_chan = [not(m) for m in mask]
             # Print all missing channels and abort execution
             print('Channels missing from dataset!!!')
-            for ch in np.array(channel_mask)[mask]:
+            for ch in np.array(channel_mask)[missing_chan]:
                 print(ch)
             sys.exit('Aborting')
     else:
@@ -669,8 +670,9 @@ if __name__ == '__main__':
     x = np.arange(21,step=0.01)
     x2 = np.arange(21,step=0.01)
     y1 = x**2
-    y2 = (50*(np.sin((2*3.1415*10)*x)) + 25*(np.sin((2*3.1415*1) * x)) +
-          30*(np.sin((2*3.1415*5)*x)))
+    y2 = (25*(np.sin((2*3.1415*10)*x)) + 25*(np.sin((2*3.1415*20) * x)) +
+          25*(np.sin((2*3.1415*30)*x)) + 25*(np.sin((2*3.1415*40)*x)) +
+          5*(np.sin((2*3.1415*17)*x)) + 8*(np.sin((2*3.1415*5)*x)) + 100)
     y5 = 50*(np.sin((2*3.1415*10)*x2))
     y3 = 500 / (x + 1)
     y4 = fft_generator([x,y2])
