@@ -131,6 +131,7 @@ def ca_realtime_cap(args):
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
         startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
+        print('Waiting to start data capture...')
     while datetime.now() < startTime:
         time.sleep(1)
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
@@ -245,6 +246,7 @@ def on_change(pvname=None, value=None, timestamp=None, **kw):
 
 def site2utc_time(time_str, site):
     site_offs = {'gs':'TZ-0400',
+                 'gs_st':'TZ-0300',
                  'gn':'TZ-1000'}
     corr_time = time_str + site_offs[site]
     time_dt_site = datetime.strptime(corr_time, "%y%m%dT%H%MTZ%z")

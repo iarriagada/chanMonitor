@@ -198,17 +198,19 @@ class DataAx:
                 print('Bottom ax!!!')
                 plt.setp(self.ax.get_xticklabels(), fontsize=8,
                          rotation=45, ha='right', visible=True)
-            if self.bottomax:
-                self.ax.set_xlabel(self.xlabel, fontsize=9)
 
             plt.xticks(self.bins)
+        # Set x label if defined by user
+        if self.bottomax:
+            self.ax.set_xlabel(self.xlabel, color='k', fontsize=9, visible=True)
+            print('setting x label!')
 
         # Define the plot area style for the ax
         self.ax.grid(True)
         self.ax.tick_params("y", colors="k")
         self.ax.set_ylabel(self.ylabel, color="k", fontsize=9)
         if self.ylims:
-            self.ax.set_ylim(self.ylims[0], self.ylims[1])
+            self.ax.set_ylim(**self.ylims)
         self.ax.legend(loc='upper right',
                        bbox_to_anchor=(1, 1),
                        fontsize='small')
@@ -287,7 +289,7 @@ class DataAxePlotter:
             for c in Dax:
                 for n in Dax[c]:
                     if Dax[c][n].bottomax:
-                        Dax[c][n].ax.set_xlabel(xlabels[c])
+                        Dax[c][n].ax.set_xlabel(xlabels[c], fontsize=9)
         plt.suptitle(title)
         plt.subplots_adjust(top=0.95, bottom=0.1, left=0.085, right=0.95,
                             hspace=0.225, wspace=0.225)
@@ -545,7 +547,7 @@ def ipZonesT(offsetArray, zcolor='k'):
     purposes
     '''
     # Return an empty array if offset array is empty
-    if not(len(offsetArray[0])):
+    if (len(offsetArray[0]) < 2):
         return []
     # If first sample of in position flag is 1, set it as start time, if it's 0
     # assume is not in position.
@@ -569,6 +571,8 @@ def ipZonesT(offsetArray, zcolor='k'):
     zonecolor = [zcolor for i in range(len(offsetPA))]
     print('size array PA: ', len(offsetPA), 'size array NA: ', len(offsetNA))
     offsetZonesArray = np.array([offsetPA,offsetNA,zonecolor]).T
+    if len(offsetZonesArray) == 1 and (offsetZonesArray[0][0] == offsetZonesArray[0][1]):
+        return []
     return offsetZonesArray
 
 def gcd(a,b):
@@ -636,7 +640,7 @@ def tracking_filter(data, ip_data):
         zone_mask = (float(zone[0])<ts_aux) & (ts_aux<float(zone[1]))
         # Apply filter mask. I'm also assuming deleting trailing and leading 5
         # points of data will filter out the huge error seen the first moments
-        # after an slew. Fudge factors are getting on my nerves
+        # after a slew. Fudge factors are getting on my nerves
         ts_array = np.append(ts_array[:-5], ts_aux[zone_mask])
         val_array = np.append(val_array[:-5], val_aux[zone_mask])
         # Trying to optimize operations, eliminate the filtered data from the
@@ -662,24 +666,32 @@ def fft_generator(data):
     # Filter the weird math stuff, leave the real world info
     freq_mask = raw_fft_freq >= 0
     # Scale the Y-axis according to the number of samples
-    data_fft = abs(raw_fft[freq_mask])*(2/len(data[1]))
     data_fft_freq = raw_fft_freq[freq_mask]
-    return [data_fft_freq, data_fft]
+    # data_fft = abs(raw_fft[freq_mask])*(2/len(data[1]))
+    data_fft = abs(raw_fft[freq_mask])*(1/len(data[1]))
+    data_fft_norm = np.concatenate(([data_fft[0]],data_fft[1:]*2))
+    return [data_fft_freq, data_fft_norm]
+    # return [data_fft_freq, data_fft]
 
 if __name__ == '__main__':
-    x = np.arange(21,step=0.01)
-    x2 = np.arange(21,step=0.01)
-    y1 = x**2
-    y2 = (25*(np.sin((2*3.1415*10)*x)) + 25*(np.sin((2*3.1415*20) * x)) +
-          25*(np.sin((2*3.1415*30)*x)) + 25*(np.sin((2*3.1415*40)*x)) +
-          5*(np.sin((2*3.1415*17)*x)) + 8*(np.sin((2*3.1415*5)*x)) + 100)
+    x = np.arange(6000,step=0.1)
+    x2 = np.arange(6000,step=0.01)
+    y1 = (x/6000)**2
+    y2 = (0.26*(np.sin((2*3.1415*0.040)*x)) + 0.27*(np.sin((2*3.1415*0.080) * x)) +
+          0.22*(np.sin((2*3.1415*0.12)*x)) + 0.24*(np.sin((2*3.1415*0.395)*x)) +
+          0.12*(np.sin((2*3.1415*0.786)*x)) + 0.1*(np.sin((2*3.1415*1.173)*x)) +
+          0.07*(np.sin((2*3.1415*1.539)*x)) + 0.08*(np.sin((2*3.1415*2.100)*x)) +
+          0.07*(np.sin((2*3.1415*2.800)*x)) + 0.07*(np.sin((2*3.1415*2.900)*x)) +
+          0.07*(np.sin((2*3.1415*3.100)*x)) + 5)
+          # 0.06*(np.sin((2*3.1415*1.539)*x)) + 2*x)
+    print(np.average(y2))
     y5 = 50*(np.sin((2*3.1415*10)*x2))
     y3 = 500 / (x + 1)
     y4 = fft_generator([x,y2])
     plts = DataAxePlotter(2)
     plts.Axe['c1']['g4'] = DataAx([x,y1], 'r', ylabel='t1', height=5, label='g4', rawx=True)
     plts.Axe['c1']['g6'] = DataAx([x,y3], 'k', ylabel='t3', label='g6', height=1, shax='g4', rawx=True)
-    plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='--', label='g5', shax='g4', rawx=True)
+    plts.Axe['c1']['g5'] = DataAx([x,y2], 'b', linestyle='-', label='g5', shax='g4', rawx=True)
     plts.Axe['c1']['g7'] = DataAx([x2,y5], 'k', linestyle='--', label='g7', rawx=True)
     plts.Axe['c2']['g1'] = DataAx(y4, 'b', ylabel='t5', label='g2', height=2, rawx=True, standalone=True)
     # plts.Axe['c2']['g2'] = DataAx([x,((x-10)**2)+40], 'g', ylabel='t4', label='g2', height=2, rawx=True)

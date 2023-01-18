@@ -35,6 +35,7 @@ gea_xml_server = {
 
 time_zone = {
     'gs':timezone(timedelta(hours=-4), 'CLT'),
+    'gs_st':timezone(timedelta(hours=-3), 'CLST'),
     'gn':timezone(timedelta(hours=-10), 'HST'),
     'utc':timezone.utc
 }
@@ -60,7 +61,7 @@ def geaExtractor(record, tsc, tec, site='gs'):
     # Define the start of the time window
     tw = tsc
     # Connect to GEA xml server
-    gea = xmlClient.ServerProxy(gea_xml_server[site])
+    gea = xmlClient.ServerProxy(gea_xml_server[site.split('_')[0]])
     # Get the list of archivers available
     geaDict = {al['name']:al['key'] for al in gea.archiver.archives()}
     # Check to see if the record is being archived, if not, return False
