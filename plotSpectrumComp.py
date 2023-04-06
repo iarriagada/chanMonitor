@@ -114,10 +114,10 @@ if __name__ == '__main__':
     # mcs_aztrack_err = ped.tracking_filter(recData['mc:azPosError'],
                                         # recData['mc:inPositionAz'])
 
-    # az_err = 'mc:azPosError'
-    # el_err = 'mc:elPosError'
-    az_err = 'mc:azPmacPosError'
-    el_err = 'mc:elPmacPosError'
+    az_err = 'mc:azPosError'
+    el_err = 'mc:elPosError'
+    # az_err = 'mc:azPmacPosError'
+    # el_err = 'mc:elPmacPosError'
 
     # mc_azterror_ffst = ped.fft_generator(mcs_aztrack_err)
     for s in data_dict:

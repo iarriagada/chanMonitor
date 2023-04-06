@@ -165,11 +165,15 @@ class DataAx:
             # Define an area of the plot to be shaded
             if len(self.zone):
                 for zs in self.zone:
-                    self.ax.axvspan(zs[0][0][0], zs[0][0][1],
+                    zn_start = datetime.fromtimestamp(zs[0][0][0], tz=self.timezone)
+                    zn_end = datetime.fromtimestamp(zs[0][0][1], tz=self.timezone)
+                    self.ax.axvspan(zn_start, zn_end,
                                     facecolor=zs[0][0][2], alpha=0.15,
                                     label=zs[1])
                     for oz in zs[0][1:]:
-                        self.ax.axvspan(oz[0], oz[1], facecolor=oz[2],
+                        oz_start = datetime.fromtimestamp(oz[0], tz=self.timezone)
+                        oz_end = datetime.fromtimestamp(oz[1], tz=self.timezone)
+                        self.ax.axvspan(oz_start, oz_end, facecolor=oz[2],
                                         alpha=0.15)
                 self.ax.legend(loc='upper right',
                                bbox_to_anchor=(1, 1),
@@ -672,6 +676,20 @@ def fft_generator(data):
     data_fft_norm = np.concatenate(([data_fft[0]],data_fft[1:]*2))
     return [data_fft_freq, data_fft_norm]
     # return [data_fft_freq, data_fft]
+
+def lost_dmd(tx_data, rx_data):
+    '''
+    lost_dmd() creates indicator array for lost demand pkgs between 2 subsystems
+    '''
+    # Extract timestamp from tracking arrays
+    tx_stream = [x[0] for x in tx_data[1]]
+    rx_stream = [x[0] for x in rx_data[1]]
+    # Calculate the mask for data in Tx stream that is on in Rx stream
+    mask = ~np.isin(tx_stream, rx_stream)
+    # Filter Tx stream
+    tx_indicators = np.ones(len(tx_stream))[mask]
+    tx_ts = np.array(tx_data[0])[mask]
+    return [tx_ts, tx_indicators]
 
 if __name__ == '__main__':
     x = np.arange(6000,step=0.1)

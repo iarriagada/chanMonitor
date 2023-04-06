@@ -53,6 +53,11 @@ def parse_args():
                             help='Replace file path with the name of a single\
                             EPICS record')
 
+    parser_gea.add_argument('-cn',
+                            '--custname',
+                            dest='cn',
+                            help='Custom name for generated data file (no spaces)')
+
     # Define real time data capture using Channel access
     parser_ca = subparser.add_parser('ca',
                                      help='Use this option to extract data\
@@ -92,14 +97,24 @@ def parse_args():
                            help='User defined start time of data capture.\
                            Format yymmddThhmm')
 
+    parser_ca.add_argument('-cn',
+                            '--custname',
+                            dest='cn',
+                            action='store_true',
+                            help='Custom name for generated data file (no spaces)')
+
     args = parser.parse_args()
     args.func(args)
     return args
 
 def geaExtraction(args):
+    fname_prefix = 'recDataGea'
+    if args.cn:
+        fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
-    startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
-    fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
+    # startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
+    # fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
+    fileName = f'{fname_prefix}-{args.tw[0]}.h5'
     print(args.tw)
     if not(args.rn):
         with open(args.recFileG, 'r') as f:
@@ -128,6 +143,9 @@ def geaExtraction(args):
     createH5F(fileName, recDic)
 
 def ca_realtime_cap(args):
+    fname_prefix = 'recMonCA'
+    if args.cn:
+        fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
     if not(args.sttime == ''):
         startTime = datetime.strptime(args.sttime, '%y%m%dT%H%M%S')
@@ -137,7 +155,8 @@ def ca_realtime_cap(args):
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
     startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
     print('Starting data capture at', startDateP)
-    fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
+    fileName = f'{fname_prefix}-{startDateStr}.h5' # define file name
+    # fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
     dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
                         minutes=int(args.rtMin)).total_seconds()
     # Read file with record names, ignore comments

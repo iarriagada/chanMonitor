@@ -24,7 +24,7 @@ geaKeys = {
     'gmoi':'wfs',
     'oiwfs':'wfs',
     'gm':'gmos',
-    'ta':'temporary',
+    'ta':'ta',
     'ws':'gws'
 }
 
