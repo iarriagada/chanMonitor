@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 import plotEpicsData as ped
 import argparse
+import json
 import sys
 
 # CHAN_LIST = ['tcs:drives:driveMCS.VALI',
@@ -55,6 +56,12 @@ def parse_args():
                         default=None,
                         help='Specify channel file with list of names')
 
+    parser.add_argument('-zn',
+                        '--zones',
+                        dest='zones_file',
+                        default=None,
+                        help='Specify file with list of zones to be drawn')
+
     parser.add_argument('-hst',
                         '--histogram',
                         dest='hst',
@@ -75,6 +82,11 @@ if __name__ == '__main__':
         with open(args.chan_file, 'r') as f:
             CHAN_LIST = [c.strip('\n') for c in f.readlines()]
 
+    zones_dict = {}
+    if args.zones_file:
+        with open(args.zones_file, 'r') as f:
+            zones_dict = json.load(f)
+
     # Read h5 file
     recData = ped.extract_hdf5(args.hdf5File,
                                args.stime,
@@ -86,10 +98,10 @@ if __name__ == '__main__':
     ylim_ta_out = lim_dict(-1.1, 0.1)
     ylim_dr_mcs = lim_dict(0.07, 0.13)
     ylim_dr_crcs = lim_dict(0.07, 0.21)
-    zone_upgrd = [[[1680649260.0, 1680655500.0, 'xkcd:vermillion'],
-                 [1680665400.0, 1680674400.0, 'xkcd:vermillion']],'Upgrd Sys']
-    zone_ops = [[[1680655500.0, 1680665400.0, 'xkcd:cerulean blue'],
-                 [1680674400.0, 1680678000.0, 'xkcd:cerulean blue']], 'Ops Sys']
+    # zone_upgrd = [[[1680649260.0, 1680655500.0, 'xkcd:vermillion'],
+                 # [1680665400.0, 1680674400.0, 'xkcd:vermillion']],'Upgrd Sys']
+    # zone_ops = [[[1680655500.0, 1680665400.0, 'xkcd:cerulean blue'],
+                 # [1680674400.0, 1680678000.0, 'xkcd:cerulean blue']], 'Ops Sys']
 
     # mcs_aztrack_err = ped.tracking_filter(recData['mc:azPosError'],
                                         # recData['mc:inPositionAz'])
@@ -104,15 +116,18 @@ if __name__ == '__main__':
                             recData['mc:followA.J'])
     tcs_total = len(recData['tcs:drives:driveMCS.VALI'][0])
     tcs_total_lost = len(tcs_lost[0])
+    lost_prcnt = (tcs_total_lost/tcs_total) * 100
     tcs_total_accum = [tcs_lost[0], list(range(1,tcs_total_lost+1))]
-    tcs_total_deriv = ped.derivData(tcs_total_accum)
+    diff_window = 1
+    lost_pkg_diff = ped.lost_dmd_diff(tcs_lost, diff_min=diff_window)
 
     mc_azDmd = DataAx(recData['mc:azDemandPos'],
                       'xkcd:grass green',
                       label='mc:azDemandPos',
                       ylabel='Position [deg]',
-                      zone=[zone_upgrd, zone_ops],
+                      zone=zones_dict,
                       linewidth=1.5)
+                          # zone=[zone_upgrd, zone_ops],
 
     mc_azPos = DataAx(recData['mc:azCurrentPos'],
                       'xkcd:bright blue',
@@ -154,7 +169,7 @@ if __name__ == '__main__':
     mc_azPmacErr = DataAx(recData['mc:azPmacPosError'],
                       'xkcd:plum',
                       label='mc:azPmacPosError',
-                      ylabel='Position [deg]',
+                      ylabel='Position Error [deg]',
                       linewidth=1.25)
 
     mc_elErr = DataAx([recData['mc:elPosError'][0],
@@ -170,13 +185,13 @@ if __name__ == '__main__':
                       ylabel='Position Error [deg]',
                       linewidth=1.25)
 
-    # tcs_lost_dmd = DataAx(tcs_lost,
-                          # 'xkcd:cherry',
-                          # linestyle='',
-                          # marker='o',
+    tcs_lost_dmd = DataAx(tcs_lost,
+                          'xkcd:cherry',
+                          linestyle='',
+                          marker='o',
+                          label=f'Lost Dmd: {lost_prcnt:.2f}% {tcs_total_lost}/{tcs_total}',
+                          ylabel='Lost Pkg [bool]')
                           # zone=[zone_upgrd, zone_ops],
-                          # label=f'Lost TCS Dmd: {tcs_total_lost}/{tcs_total}',
-                          # ylabel='Lost Pkg [bool]')
 
     # tcs_lost_dmd = DataAx(tcs_total_accum,
                           # 'xkcd:cherry',
@@ -186,26 +201,29 @@ if __name__ == '__main__':
                           # label=f'Lost TCS Dmd: {tcs_total_lost}/{tcs_total}',
                           # ylabel='Lost Pkg [bool]')
 
-    tcs_lost_dmd = DataAx(tcs_total_deriv,
+    tcs_lost_diff = DataAx(lost_pkg_diff,
                           'xkcd:cherry',
-                          zone=[zone_upgrd, zone_ops],
-                          label=f'Lost TCS Dmd: {tcs_total_lost}/{tcs_total}',
-                          ylabel='Lost Pkg [bool]')
+                          marker='o',
+                          drawstyle='steps-post',
+                           label=f'Acc Lost Dmd, Diff={diff_window} [min] ',
+                          ylabel=f'Acc Lost Pkg [count]')
+                          # zone=[zone_upgrd, zone_ops],
 
     plts = DataAxePlotter(ncols=2)
 
     plts.Axe['c1']['mc_azDmd'] = mc_azDmd
     plts.Axe['c1']['mc_azPos'] = DataAx.update_axe(mc_azPos,
                                                    shaxname='mc_azDmd')
-    plts.Axe['c1']['mc_azPmacDmd'] = mc_azPmacDmd
+    # plts.Axe['c1']['mc_azPmacDmd'] = mc_azPmacDmd
     plts.Axe['c1']['mc_azErr'] = mc_azErr
     plts.Axe['c1']['mc_azPmacErr'] = mc_azPmacErr
     plts.Axe['c1']['tcs_lost_dmd'] = tcs_lost_dmd
+    plts.Axe['c1']['tcs_lost_diff'] = tcs_lost_diff
 
     plts.Axe['c2']['mc_elDmd'] = mc_elDmd
     plts.Axe['c2']['mc_elPos'] = DataAx.update_axe(mc_elPos,
                                                    shaxname='mc_elDmd')
-    plts.Axe['c2']['mc_elPmacDmd'] = mc_elPmacDmd
+    # plts.Axe['c2']['mc_elPmacDmd'] = mc_elPmacDmd
     plts.Axe['c2']['mc_elErr'] = mc_elErr
     plts.Axe['c2']['mc_elPmacErr'] = mc_elPmacErr
 

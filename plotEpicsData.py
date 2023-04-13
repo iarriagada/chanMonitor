@@ -58,7 +58,7 @@ class DataAx:
     def __init__(self, data, color, linestyle='-', marker=None,
                  drawstyle='default', label=None, ylabel='', rawx=False,
                  xlabel='', ylims=[], shax=None, height=1, marksize=5,
-                 errorline=[], zone=[], alpha=1.0, ticklabels=False,
+                 errorline=[], zone={}, alpha=1.0, ticklabels=False,
                  standalone=False, linewidth=1.25, histbins=False,
                  limsbins=None, timezone=None):
         '''
@@ -163,21 +163,40 @@ class DataAx:
                                      color='y')
 
             # Define an area of the plot to be shaded
-            if len(self.zone):
-                for zs in self.zone:
-                    zn_start = datetime.fromtimestamp(zs[0][0][0], tz=self.timezone)
-                    zn_end = datetime.fromtimestamp(zs[0][0][1], tz=self.timezone)
+            if self.zone:
+                for k,zs in self.zone['zones'].items():
+
+                    zn_start = datetime.strptime(zs['timestamps'][0][0],
+                                                 '%y%m%dT%H%M')
+                    zn_end = datetime.strptime(zs['timestamps'][0][1],
+                                                 '%y%m%dT%H%M')
                     self.ax.axvspan(zn_start, zn_end,
-                                    facecolor=zs[0][0][2], alpha=0.15,
-                                    label=zs[1])
-                    for oz in zs[0][1:]:
-                        oz_start = datetime.fromtimestamp(oz[0], tz=self.timezone)
-                        oz_end = datetime.fromtimestamp(oz[1], tz=self.timezone)
-                        self.ax.axvspan(oz_start, oz_end, facecolor=oz[2],
+                                    facecolor=zs['color'], alpha=0.15,
+                                    label=zs['label'])
+                    for oz in zs['timestamps'][1:]:
+                        oz_start = datetime.strptime(oz[0], '%y%m%dT%H%M')
+                        oz_end = datetime.strptime(oz[1], '%y%m%dT%H%M')
+                        self.ax.axvspan(oz_start, oz_end, facecolor=zs['color'],
                                         alpha=0.15)
                 self.ax.legend(loc='upper right',
                                bbox_to_anchor=(1, 1),
                                fontsize = 'small')
+
+            # if len(self.zone):
+                # for zs in self.zone:
+                    # zn_start = datetime.fromtimestamp(zs[0][0][0], tz=self.timezone)
+                    # zn_end = datetime.fromtimestamp(zs[0][0][1], tz=self.timezone)
+                    # self.ax.axvspan(zn_start, zn_end,
+                                    # facecolor=zs[0][0][2], alpha=0.15,
+                                    # label=zs[1])
+                    # for oz in zs[0][1:]:
+                        # oz_start = datetime.fromtimestamp(oz[0], tz=self.timezone)
+                        # oz_end = datetime.fromtimestamp(oz[1], tz=self.timezone)
+                        # self.ax.axvspan(oz_start, oz_end, facecolor=oz[2],
+                                        # alpha=0.15)
+                # self.ax.legend(loc='upper right',
+                               # bbox_to_anchor=(1, 1),
+                               # fontsize = 'small')
 
             if self.bottomax and not(self.rawx):
                 self.ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
@@ -690,6 +709,37 @@ def lost_dmd(tx_data, rx_data):
     tx_indicators = np.ones(len(tx_stream))[mask]
     tx_ts = np.array(tx_data[0])[mask]
     return [tx_ts, tx_indicators]
+
+def lost_dmd_diff(lost_pkg, diff_sec=0, diff_min=0):
+    '''
+    lost_dmd_diff() generates differentials of width "diff_width" over the time
+    span of an array
+    '''
+    lwts = lost_pkg[0][0] # Assign first timestamp
+    # Calculate differential window
+    diff_width = diff_sec + diff_min*60
+    uwts = lwts + diff_width # Differential window upper limit
+    # Initialize auxiliary arrays and return array
+    aux_ts, aux_count= lost_pkg
+    diff_accum = []
+    diff_ts = []
+
+    # While the lower diff window timestamp is less than the last timestamp in
+    # array
+    while lwts <= lost_pkg[0][-1]:
+        # Define a mask for all data pairs with timestamp less than upper lim
+        mask = aux_ts < uwts
+        # Sum all lost pkg counts in the mask, append result and ts in arrays
+        diff_sum = np.sum(aux_count[mask])
+        diff_accum.append(diff_sum)
+        diff_ts.append(lwts)
+        # Update aux arrays and diff window
+        aux_ts = aux_ts[~mask]
+        aux_count = aux_count[~mask]
+        lwts = uwts
+        uwts = lwts + diff_width
+
+    return [diff_ts, diff_accum]
 
 if __name__ == '__main__':
     x = np.arange(6000,step=0.1)
