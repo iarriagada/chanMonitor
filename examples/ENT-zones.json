@@ -1,0 +1,20 @@
+{
+    "zones":{
+        "upgrade":{
+            "timestamps":[
+                ["230404T1900", "230404T2042"],
+                ["230404T2347", "230405T0155"]
+            ],
+            "color":"xkcd:vermillion",
+            "label":"Upgrade Sys"
+        },
+        "ops":{
+            "timestamps":[
+                ["230404T2100", "230404T2325"],
+                ["230405T0200", "230405T0300"]
+            ],
+            "color":"xkcd:cerulean blue",
+            "label":"Ops Sys"
+        }
+    }
+}
