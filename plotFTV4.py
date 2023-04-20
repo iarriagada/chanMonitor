@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     ylim_ta = lim_dict(-0.0001, 0.008)
     ylim_ta_out = lim_dict(-1.1, 0.1)
-    ylim_dr_mcs = lim_dict(0.07, 0.13)
+    ylim_dr_mcs = lim_dict(-0.01, 0.01)
     ylim_dr_crcs = lim_dict(0.07, 0.21)
     # zone_upgrd = [[[1680649260.0, 1680655500.0, 'xkcd:vermillion'],
                  # [1680665400.0, 1680674400.0, 'xkcd:vermillion']],'Upgrd Sys']
@@ -164,12 +164,14 @@ if __name__ == '__main__':
                       'xkcd:brick red',
                       label='mc:azPosError',
                       ylabel='Position Error [deg]',
+                      ylims = ylim_dr_mcs,
                       linewidth=1.25)
 
     mc_azPmacErr = DataAx(recData['mc:azPmacPosError'],
                       'xkcd:plum',
                       label='mc:azPmacPosError',
                       ylabel='Position Error [deg]',
+                          ylims = ylim_dr_mcs,
                       linewidth=1.25)
 
     mc_elErr = DataAx([recData['mc:elPosError'][0],
@@ -177,12 +179,14 @@ if __name__ == '__main__':
                       'xkcd:red orange',
                       label='mc:elPosError',
                       ylabel='Position Error [deg]',
+                          ylims = ylim_dr_mcs,
                       linewidth=1.25)
 
     mc_elPmacErr = DataAx(recData['mc:elPmacPosError'],
                       'xkcd:brownish orange',
                       label='mc:elPmacPosError',
                       ylabel='Position Error [deg]',
+                          ylims = ylim_dr_mcs,
                       linewidth=1.25)
 
     tcs_lost_dmd = DataAx(tcs_lost,
