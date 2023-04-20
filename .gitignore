@@ -15,4 +15,12 @@
 *.swo
 *.swn
 
+
+# Ignore local data directory
 data/
+
+# Ignore compiled python dir
+__pycache__/
+
+# Ignore jupyter checkpoints
+.ipynb_checkpoints/
