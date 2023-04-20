@@ -10,7 +10,7 @@ import re
 import numpy as np
 
 from datetime import datetime, timedelta, timezone, tzinfo
-from dataFromGea import geaExtractor
+from chanmonitor.lib.dataFromGea import geaExtractor
 
 STATUS_STR = 'not connected'
 
@@ -58,6 +58,11 @@ def parse_args():
                             dest='cn',
                             help='Custom name for generated data file (no spaces)')
 
+    parser_gea.add_argument('-cd',
+                            '--custdir',
+                            dest='cd',
+                            help='User specd dir to save data file (no spaces)')
+
     # Define real time data capture using Channel access
     parser_ca = subparser.add_parser('ca',
                                      help='Use this option to extract data\
@@ -103,19 +108,30 @@ def parse_args():
                             action='store_true',
                             help='Custom name for generated data file (no spaces)')
 
+    parser_ca.add_argument('-cd',
+                            '--custdir',
+                            dest='cd',
+                            help='User specd dir to save data file (no spaces)')
+
     args = parser.parse_args()
     args.func(args)
     return args
 
 def geaExtraction(args):
-    fname_prefix = 'recDataGea'
+    file_loc = './data/' # Data file default location
+    fname_prefix = 'recDataGea' # Data file default prefix
+    if args.cd:
+        file_loc = args.cd
+    # Change prefix if user has selected the option
     if args.cn:
         fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
-    # startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
-    # fileName = 'recDataGea-'+startDateStr+'.h5' # define file name
-    fileName = f'{fname_prefix}-{args.tw[0]}.h5'
+    fileName = f'{file_loc}{fname_prefix}-{args.tw[0]}.h5'
+    # Create data dir if it doesn't exist
+    os.makedirs(os.path.dirname(fileName), exist_ok=True)
     print(args.tw)
+    # Read text file with record list if single record options has not been
+    # selected
     if not(args.rn):
         with open(args.recFileG, 'r') as f:
             recList = [l.split('#')[0].strip()
@@ -138,12 +154,16 @@ def geaExtraction(args):
         recDic[recname] = recData
         chan_count += 1
 
+    # Exit if no channels were extracted
     if not(chan_count):
         sys.exit('No channels were extracted')
     createH5F(fileName, recDic)
 
 def ca_realtime_cap(args):
+    file_loc = './data/' # Data file default location
     fname_prefix = 'recMonCA'
+    if args.cd:
+        file_loc = args.cd
     if args.cn:
         fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
@@ -155,8 +175,9 @@ def ca_realtime_cap(args):
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
     startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
     print('Starting data capture at', startDateP)
-    fileName = f'{fname_prefix}-{startDateStr}.h5' # define file name
-    # fileName = 'recMonCA-'+startDateStr+'.h5' # define file name
+    fileName = f'{file_loc}{fname_prefix}-{startDateStr}.h5' # define file name
+    # Create data dir if it doesn't exist
+    os.makedirs(os.path.dirname(fileName), exist_ok=True)
     dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
                         minutes=int(args.rtMin)).total_seconds()
     # Read file with record names, ignore comments
@@ -256,6 +277,8 @@ def createH5F(fname, rDic):
     print('Data capture complete with file: {}'.format(fname))
 
 def on_change(pvname=None, value=None, timestamp=None, **kw):
+    # Get the input dict and start filling up with data. This is done as
+    # parallel threads, which is super nice :)
     kw['rdict'][pvname]['timestamp'].append(timestamp)
     if kw['rdict'][pvname]['string']:
         kw['rdict'][pvname]['value'] = np.append(kw['rdict'][pvname]['value'],

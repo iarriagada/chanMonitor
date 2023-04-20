@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from plotEpicsData import DataAx, DataAxePlotter
+from chanmonitor.core.plotEpicsData import DataAx, DataAxePlotter
 from datetime import datetime
-from dataFromGea import utc2site_time
+from chanmonitor.core.dataFromGea import utc2site_time
 import numpy as np
-import plotEpicsData as ped
+import chanmonitor.core.plotEpicsData as ped
 import argparse
 import sys
 import re
