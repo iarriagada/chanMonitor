@@ -22,7 +22,7 @@ $> ./core/inPosDataCap.py gea -h
 To capture data from the telescope using channel access (CA) a plain txt file is needed. This file specifies the channels to be acquired. An example of a data capture launch would be follows:
 
 <pre>
-$> ./core/inPosDataCap.py ca tcs-chans.txt -hr 3
+$> ./util/inPosDataCap.py ca tcs-chans.txt -hr 3
 </pre>
 
 This would launch the data acquisition for 3 hours
@@ -38,7 +38,7 @@ tcs:drives:driveCRS.VALA
 To extract data from GEA, a plain txt file can be used, or a single channel can be specified. An example GEA is extraction is shown below
 
 <pre>
-$> ./core/inPosDataCap.py gea gn tcs:drives:driveMCS.VALA 210110T0200 210110T0215 -rn
+$> ./util/inPosDataCap.py gea gn tcs:drives:driveMCS.VALA 210110T0200 210110T0215 -rn
 </pre>
 
 This would capture 15 min of data for `tcs:drives:driveMCS.VALA`, and generate the corresponding hdf5 file. HDF5 are stored in `./data` directory by default.
