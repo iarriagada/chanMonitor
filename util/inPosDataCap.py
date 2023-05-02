@@ -118,7 +118,7 @@ def parse_args():
     return args
 
 def geaExtraction(args):
-    file_loc = './data/' # Data file default location
+    file_loc = '../data/' # Data file default location
     fname_prefix = 'recDataGea' # Data file default prefix
     if args.cd:
         file_loc = args.cd
