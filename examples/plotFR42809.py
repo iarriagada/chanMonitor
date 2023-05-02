@@ -120,11 +120,17 @@ if __name__ == '__main__':
     tcs_total_accum = [tcs_lost[0], list(range(1,tcs_total_lost+1))]
     diff_window = 1
     lost_pkg_diff = ped.lost_dmd_diff(tcs_lost, diff_min=diff_window)
+    tcs_dmd_val = [d[13] for d in recData['tcs:drives:driveMCS.VALI'][1]]
+    tcs_dmd_array = [recData['tcs:drives:driveMCS.VALI'][0], tcs_dmd_val]
+    mcs_fllw_val = [d[3] for d in recData['mc:followA.J'][1]]
+    mcs_fllw_array = [recData['mc:followA.J'][0], mcs_fllw_val]
 
     mc_azDmd = DataAx(recData['mc:azDemandPos'],
                       'xkcd:grass green',
                       label='mc:azDemandPos',
                       ylabel='Position [deg]',
+                          marker='o',
+                      marksize=5,
                       zone=zones_dict,
                       linewidth=1.5)
                           # zone=[zone_upgrd, zone_ops],
@@ -133,6 +139,24 @@ if __name__ == '__main__':
                       'xkcd:bright blue',
                       label='mc:azCurrentPos',
                       ylabel='Position [deg]',
+                          marker='o',
+                      marksize=5,
+                      linewidth=1.25)
+
+    mc_azPos_tcs = DataAx(tcs_dmd_array,
+                      'xkcd:hot pink',
+                          label='tcs:drives:driveMCS.VALI',
+                      ylabel='Position [deg]',
+                          marker='o',
+                      marksize=5,
+                      linewidth=1.25)
+
+    mc_azPos_fllw = DataAx(mcs_fllw_array,
+                      'xkcd:neon blue',
+                          label='mc:followA.J',
+                      ylabel='Position [deg]',
+                          marker='o',
+                      marksize=5,
                       linewidth=1.25)
 
     mc_azPmacDmd = DataAx(recData['mc:azPmacDemandPos'],
@@ -165,6 +189,7 @@ if __name__ == '__main__':
                       label='mc:azPosError',
                       ylabel='Position Error [deg]',
                       ylims = ylim_dr_mcs,
+                      height = 2,
                       linewidth=1.25)
 
     mc_azPmacErr = DataAx(recData['mc:azPmacPosError'],
@@ -172,6 +197,7 @@ if __name__ == '__main__':
                       label='mc:azPmacPosError',
                       ylabel='Position Error [deg]',
                           ylims = ylim_dr_mcs,
+                      height = 2,
                       linewidth=1.25)
 
     mc_elErr = DataAx([recData['mc:elPosError'][0],
@@ -209,14 +235,19 @@ if __name__ == '__main__':
                           'xkcd:cherry',
                           marker='o',
                           drawstyle='steps-post',
+                      height = 2,
                            label=f'Acc Lost Dmd, Diff={diff_window} [min] ',
                           ylabel=f'Acc Lost Pkg [count]')
                           # zone=[zone_upgrd, zone_ops],
 
     plts = DataAxePlotter(ncols=2)
 
-    plts.Axe['c1']['mc_azDmd'] = mc_azDmd
-    plts.Axe['c1']['mc_azPos'] = DataAx.update_axe(mc_azPos,
+    plts.Axe['c2']['mc_azDmd'] = mc_azDmd
+    plts.Axe['c2']['mc_azPos'] = DataAx.update_axe(mc_azPos,
+                                                   shaxname='mc_azDmd')
+    plts.Axe['c2']['mc_azPos_tcs'] = DataAx.update_axe(mc_azPos_tcs,
+                                                   shaxname='mc_azDmd')
+    plts.Axe['c2']['mc_azPos_fllw'] = DataAx.update_axe(mc_azPos_fllw,
                                                    shaxname='mc_azDmd')
     # plts.Axe['c1']['mc_azPmacDmd'] = mc_azPmacDmd
     plts.Axe['c1']['mc_azErr'] = mc_azErr
@@ -224,14 +255,14 @@ if __name__ == '__main__':
     plts.Axe['c1']['tcs_lost_dmd'] = tcs_lost_dmd
     plts.Axe['c1']['tcs_lost_diff'] = tcs_lost_diff
 
-    plts.Axe['c2']['mc_elDmd'] = mc_elDmd
-    plts.Axe['c2']['mc_elPos'] = DataAx.update_axe(mc_elPos,
-                                                   shaxname='mc_elDmd')
+    # plts.Axe['c2']['mc_elDmd'] = mc_elDmd
+    # plts.Axe['c2']['mc_elPos'] = DataAx.update_axe(mc_elPos,
+                                                   # shaxname='mc_elDmd')
     # plts.Axe['c2']['mc_elPmacDmd'] = mc_elPmacDmd
-    plts.Axe['c2']['mc_elErr'] = mc_elErr
-    plts.Axe['c2']['mc_elPmacErr'] = mc_elPmacErr
+    # plts.Axe['c2']['mc_elErr'] = mc_elErr
+    # plts.Axe['c2']['mc_elPmacErr'] = mc_elPmacErr
 
     # plts.Axe['c3']['mc_trk_azerr_fft'] = mc_trk_azerr_fft
     # plts.Axe['c3']['mc_trk_elerr_fft'] = mc_trk_elerr_fft
     plts.positionPlot()
-    plts.plotConfig('Fast Track Analysis')
+    plts.plotConfig('FR-42809 Analysis')

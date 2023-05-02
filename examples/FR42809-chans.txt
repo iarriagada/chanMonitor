@@ -1,0 +1,26 @@
+# TCS demands array sent to MCS
+tcs:drives:driveMCS.VALI
+
+# Demand array received by MCS
+mc:followA.J
+
+# MCS Azimuth position metrics
+mc:azCurrentPos
+mc:azDemandPos
+mc:azPmacDemandPos
+mc:azPmacPosError
+mc:azPosError
+
+# MCS Elevation positions metrics
+#mc:elCurrentPos
+#mc:elDemandPos
+#mc:elPmacDemandPos
+#mc:Tracking.VALC
+#mc:azMPHandshake
+#mc:elMPHandshake
+#mc:elPmacPosError
+#mc:elPosError
+
+# MCS In Position flags
+mc:inPositionAz
+#mc:inPositionEl
