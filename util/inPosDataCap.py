@@ -105,7 +105,6 @@ def parse_args():
     parser_ca.add_argument('-cn',
                             '--custname',
                             dest='cn',
-                            action='store_true',
                             help='Custom name for generated data file (no spaces)')
 
     parser_ca.add_argument('-cd',
@@ -118,15 +117,13 @@ def parse_args():
     return args
 
 def geaExtraction(args):
-    file_loc = '../data/' # Data file default location
     fname_prefix = 'recDataGea' # Data file default prefix
-    if args.cd:
-        file_loc = args.cd
     # Change prefix if user has selected the option
     if args.cn:
         fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
-    fileName = f'{file_loc}{fname_prefix}-{args.tw[0]}.h5'
+    # Generate the full name of the file + location dir
+    fileName = filename_gen(fname_prefix, args.tw[0], args.cd)
     # Create data dir if it doesn't exist
     os.makedirs(os.path.dirname(fileName), exist_ok=True)
     print(args.tw)
@@ -160,10 +157,7 @@ def geaExtraction(args):
     createH5F(fileName, recDic)
 
 def ca_realtime_cap(args):
-    file_loc = './data/' # Data file default location
     fname_prefix = 'recMonCA'
-    if args.cd:
-        file_loc = args.cd
     if args.cn:
         fname_prefix = args.cn
     startTime = datetime.now() # starting time of the capture
@@ -175,7 +169,8 @@ def ca_realtime_cap(args):
     startDateStr = datetime.strftime(startTime, '%Y%m%dT%H%M%S')
     startDateP = datetime.strftime(startTime, '%Y-%m-%d %H:%M:%S')
     print('Starting data capture at', startDateP)
-    fileName = f'{file_loc}{fname_prefix}-{startDateStr}.h5' # define file name
+    # Generate the full name of the file + location dir
+    fileName = filename_gen(fname_prefix, startDateStr, args.cd)
     # Create data dir if it doesn't exist
     os.makedirs(os.path.dirname(fileName), exist_ok=True)
     dataCapDur = timedelta(days=int(args.rtDays), hours=int(args.rtHrs),
@@ -294,6 +289,19 @@ def site2utc_time(time_str, site):
     time_dt_site = datetime.strptime(corr_time, "%y%m%dT%H%MTZ%z")
     time_dt_utc = time_dt_site.astimezone(timezone.utc)
     return time_dt_utc
+
+def filename_gen(file_prefix, start_date, custom_dir=''):
+    # Extract path to module directory
+    mwd_filt = re.compile(r'(/([^/]+/)+chanmonitor)')
+    # Generate path to default data dir
+    module_wdir = f"{mwd_filt.search(os.getcwd())[1]}/data"
+    # Override default dir if it was specified by user
+    if custom_dir:
+        module_wdir = custom_dir
+    # Generate complete file name: full path + file name
+    file_name = f"{module_wdir}/{file_prefix}-{start_date}.h5"
+    return file_name
+
 
 if __name__ == '__main__':
     args = parse_args() # capture the input arguments

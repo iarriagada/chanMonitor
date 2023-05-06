@@ -120,8 +120,8 @@ if __name__ == '__main__':
     tcs_total_accum = [tcs_lost[0], list(range(1,tcs_total_lost+1))]
     diff_window = 1
     lost_pkg_diff = ped.lost_dmd_diff(tcs_lost, diff_min=diff_window)
-    tcs_dmd_val = [d[13] for d in recData['tcs:drives:driveMCS.VALI'][1]]
-    tcs_dmd_array = [recData['tcs:drives:driveMCS.VALI'][0], tcs_dmd_val]
+    tcs_dmd_val = [d[3] for d in recData['tcs:drives:driveMCS.VALA'][1]]
+    tcs_dmd_array = [recData['tcs:drives:driveMCS.VALA'][0], tcs_dmd_val]
     mcs_fllw_val = [d[3] for d in recData['mc:followA.J'][1]]
     mcs_fllw_array = [recData['mc:followA.J'][0], mcs_fllw_val]
 
