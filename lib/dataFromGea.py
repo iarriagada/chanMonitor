@@ -37,7 +37,8 @@ time_zone = {
     'gs':timezone(timedelta(hours=-4), 'CLT'),
     'gs_st':timezone(timedelta(hours=-3), 'CLST'),
     'gn':timezone(timedelta(hours=-10), 'HST'),
-    'utc':timezone.utc
+    'utc':timezone.utc,
+    'no':None
 }
 
 def utc2site_time(timestamp, site):

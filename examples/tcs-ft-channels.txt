@@ -5,35 +5,37 @@ tcs:drives:driveMCS.VALI
 tcs:drives:driveCRS.VALA
 
 # General in position flag
-tcs:inPosition
+#tcs:inPosition
 
 # MCS stream receiver “something:FollowA”
 mc:followA.J
 mc:azDemandPos
 mc:azCurrentPos
 mc:azPosError
-mc:elDemandPos
-mc:elCurrentPos
-mc:elPosError
-mc:inPositionAz
-mc:inPositionEl
+mc:azPmacPosError
+#mc:elDemandPos
+#mc:elCurrentPos
+#mc:elPosError
+#mc:elPmacPosError
+#mc:inPositionAz
+#mc:inPositionEl
 
 # CRCS stream receiver “something:FollowA”
-cr:followA.J
-cr:crDemandPos
-cr:crCurrentPos
-cr:crPmacPosError
-cr:inPosition
+#cr:followA.J
+#cr:crDemandPos
+#cr:crCurrentPos
+#cr:crPmacPosError
+#cr:inPosition
 
 # PWFS1 stream receiver
-tcs:drives:pwfs1Xdemand
-tcs:drives:pwfs1Ydemand
-tcs:drives:pwfs1Zdemand
+#tcs:drives:pwfs1Xdemand
+#tcs:drives:pwfs1Ydemand
+#tcs:drives:pwfs1Zdemand
 
 # PWFS2 stream receiver
-tcs:drives:pwfs2Xdemand
-tcs:drives:pwfs2Ydemand
-tcs:drives:pwfs2Zdemand
+#tcs:drives:pwfs2Xdemand
+#tcs:drives:pwfs2Ydemand
+#tcs:drives:pwfs2Zdemand
 
 # OIWFS stream receiver
 #tcs:drives:oiwfsXdemand
@@ -52,4 +54,4 @@ tcs:drives:pwfs2Zdemand
 #ta:m2:rmsErr.VALJ
 
 # SCS
-tcs:drives:driveM2S.VALA
+#tcs:drives:driveM2S.VALA

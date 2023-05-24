@@ -7,6 +7,7 @@ import matplotlib.gridspec as gridspec
 
 from matplotlib import dates
 from datetime import datetime, timedelta
+from chanmonitor.lib.dataFromGea import time_zone
 
 import collections
 import numpy as np
@@ -60,7 +61,7 @@ class DataAx:
                  xlabel='', ylims=[], shax=None, height=1, marksize=5,
                  errorline=[], zone={}, alpha=1.0, ticklabels=False,
                  standalone=False, linewidth=1.25, histbins=False,
-                 limsbins=None, timezone=None):
+                 limsbins=None, timezone=None, site='no'):
         '''
         Creates the plot object
         '''
@@ -99,6 +100,7 @@ class DataAx:
         self.bins = False
         self.patches = False
         self.timezone = timezone
+        self.site = site
 
 
     def plot_ax(self, gs, tcells, rows, masterax):
@@ -165,43 +167,25 @@ class DataAx:
             # Define an area of the plot to be shaded
             if self.zone:
                 for k,zs in self.zone['zones'].items():
-
-                    zn_start = datetime.strptime(zs['timestamps'][0][0],
-                                                 '%y%m%dT%H%M')
-                    zn_end = datetime.strptime(zs['timestamps'][0][1],
-                                                 '%y%m%dT%H%M')
+                    zn_start = site_strp(zs['timestamps'][0][0], self.site)
+                    zn_end = site_strp(zs['timestamps'][0][1], self.site)
                     self.ax.axvspan(zn_start, zn_end,
                                     facecolor=zs['color'], alpha=0.15,
                                     label=zs['label'])
                     for oz in zs['timestamps'][1:]:
-                        oz_start = datetime.strptime(oz[0], '%y%m%dT%H%M')
-                        oz_end = datetime.strptime(oz[1], '%y%m%dT%H%M')
+                        oz_start = site_strp(oz[0], self.site)
+                        oz_end = site_strp(oz[1], self.site)
                         self.ax.axvspan(oz_start, oz_end, facecolor=zs['color'],
                                         alpha=0.15)
                 self.ax.legend(loc='upper right',
                                bbox_to_anchor=(1, 1),
                                fontsize = 'small')
 
-            # if len(self.zone):
-                # for zs in self.zone:
-                    # zn_start = datetime.fromtimestamp(zs[0][0][0], tz=self.timezone)
-                    # zn_end = datetime.fromtimestamp(zs[0][0][1], tz=self.timezone)
-                    # self.ax.axvspan(zn_start, zn_end,
-                                    # facecolor=zs[0][0][2], alpha=0.15,
-                                    # label=zs[1])
-                    # for oz in zs[0][1:]:
-                        # oz_start = datetime.fromtimestamp(oz[0], tz=self.timezone)
-                        # oz_end = datetime.fromtimestamp(oz[1], tz=self.timezone)
-                        # self.ax.axvspan(oz_start, oz_end, facecolor=oz[2],
-                                        # alpha=0.15)
-                # self.ax.legend(loc='upper right',
-                               # bbox_to_anchor=(1, 1),
-                               # fontsize = 'small')
-
             if self.bottomax and not(self.rawx):
                 self.ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
                 self.ax.xaxis.set_major_formatter(
-                    matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f"))
+                    matplotlib.dates.DateFormatter("%d/%m %H:%M:%S.%f",
+                                                   tz=self.timezone))
                 self.ax.xaxis.set_minor_locator(ticker.MaxNLocator(200))
             if self.bottomax:
                 plt.setp(self.ax.get_xticklabels(), fontsize=8,
@@ -255,15 +239,15 @@ class DataAx:
         for attr in kwargs:
             setattr(data_axe, attr, kwargs[attr])
         return data_axe
-
 # DataAx class end
 
 class DataAxePlotter:
-    def __init__(self, ncols=1):
+    def __init__(self, ncols=1, site='no'):
         self.Axe = collections.OrderedDict()
         for n in range(ncols):
             self.Axe['c'+str(n+1)] = collections.OrderedDict()
         self.masterax = None
+        self.site = site
         self.gs = None
 
     def positionPlot(self):
@@ -294,12 +278,12 @@ class DataAxePlotter:
             Dax[c][bax].bottomax = True
             i += 1
         totCells = lcmArray([ric[c] for c in ric])
-        # print('totCells', totCells)
-        # print('totCols', i)
         self.gs = gridspec.GridSpec(totCells,i)
         for c in Dax:
             for n in Dax[c]:
                 print('Setting up plot {}'.format(n))
+                Dax[c][n].timezone = time_zone[self.site]
+                Dax[c][n].site = self.site
                 Dax[c][n].plot_ax(self.gs, totCells, ric[c], self.masterax)
 
     def plotConfig(self, title=None, xlabels=None):
@@ -317,17 +301,27 @@ class DataAxePlotter:
         plt.subplots_adjust(top=0.95, bottom=0.1, left=0.085, right=0.95,
                             hspace=0.225, wspace=0.225)
         plt.show()
-
 # DataAxePlotter class end
 
+def site_strp(timestr, site='no'):
+    site_offs = {'gs':'TZ-0400',
+                 'gs_st':'TZ-0300',
+                 'gn':'TZ-1000',
+                 'no':''}
+    ts_format = '%y%m%dT%H%M'
+    if site != 'no':
+        ts_format += 'TZ%z'
+    site_timestr = datetime.strptime(timestr + site_offs[site], ts_format)
+    return site_timestr
+
+
 def extract_hdf5(hdf5File, start_time=None,
-                 end_time=None, channel_mask=None):
+                 end_time=None, channel_mask=None, site='no'):
     # Handle the start and end times
     if start_time:
         try:
-            stime_dt = datetime.strptime(start_time, '%y%m%dT%H%M')
+            stime_dt = site_strp(start_time, site)
             stime = datetime.timestamp(stime_dt)
-
         except ValueError as err:
             print("ValueError --starttime: {}".format(err))
             sys.exit()
@@ -335,9 +329,8 @@ def extract_hdf5(hdf5File, start_time=None,
         stime = 0.0
     if end_time:
         try:
-            etime_dt = datetime.strptime(end_time, '%y%m%dT%H%M')
+            etime_dt = site_strp(end_time, site)
             etime = datetime.timestamp(etime_dt)
-
         except ValueError as err:
             print("ValueError --endtime: {}".format(err))
             sys.exit()
@@ -353,9 +346,6 @@ def extract_hdf5(hdf5File, start_time=None,
     print(hdf5File)
     # Read h5 file
     data_files = [h5py.File(datafile, 'r') for datafile in hdf5File]
-    # If channel mask not defined, make the mask be every channel in the data
-    # set
-
     # Generate list with all channels in dataset
     for data_group in data_files:
         for cn in data_group:
@@ -373,7 +363,6 @@ def extract_hdf5(hdf5File, start_time=None,
     else:
         # If there's no mask defined, make it the data channel list.
         channel_mask = channel_list
-
     # Extract record names and create an array with group object and name of
     # group
     aux_mask = []
@@ -690,11 +679,9 @@ def fft_generator(data):
     freq_mask = raw_fft_freq >= 0
     # Scale the Y-axis according to the number of samples
     data_fft_freq = raw_fft_freq[freq_mask]
-    # data_fft = abs(raw_fft[freq_mask])*(2/len(data[1]))
     data_fft = abs(raw_fft[freq_mask])*(1/len(data[1]))
     data_fft_norm = np.concatenate(([data_fft[0]],data_fft[1:]*2))
     return [data_fft_freq, data_fft_norm]
-    # return [data_fft_freq, data_fft]
 
 def lost_dmd(tx_data, rx_data):
     '''
@@ -723,7 +710,6 @@ def lost_dmd_diff(lost_pkg, diff_sec=0, diff_min=0):
     aux_ts, aux_count= lost_pkg
     diff_accum = []
     diff_ts = []
-
     # While the lower diff window timestamp is less than the last timestamp in
     # array
     while lwts <= lost_pkg[0][-1]:
@@ -738,7 +724,6 @@ def lost_dmd_diff(lost_pkg, diff_sec=0, diff_min=0):
         aux_count = aux_count[~mask]
         lwts = uwts
         uwts = lwts + diff_width
-
     return [diff_ts, diff_accum]
 
 if __name__ == '__main__':
