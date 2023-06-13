@@ -16,6 +16,7 @@ geaKeys = {
     'mc':'mcs',
     'pr':'pr',
     'm1':'pcs',
+    'm1p':'pcsact',
     'm2':'scs',
     'tcs':'tcs',
     'bto':'bto',
@@ -53,14 +54,24 @@ def geaExtractor(record, tsc, tec, site='gs'):
     geaData = {'timestamp':[], 'value':[]}
     # Get IOC top from the name of the record, then look in the GEA keyword
     # dictionary
-    archiver = geaKeys[record.split(':')[0]]
-    # Define the timedelta to switch date to UTC and define a delta of 5
-    # minutes to get data from GEA
-    tq = timedelta(minutes=5)
+    top = record.split(':')
+    archiver = geaKeys[top[0]]
+    # TODO: This is just for the especial case of a weird PCS archiver, it needs
+    # to be fixed
+    if top[0] == 'm1p':
+        record = 'm1:' + ':'.join(top[1:])
+    # Define the number of data points to be harvested in each iteration
+    data_points = 10000
     # Determine the total amount of time to be extracted
     timeTotal = (tec - tsc).total_seconds()
-    # Define the start of the time window
-    tw = tsc
+    # Define the start and end of the time window, in seconds and nano seconds
+    # to be handled by the archiver
+    ts = tsc.timestamp()
+    te = tec.timestamp()
+    tss = int(ts)
+    tsn = int((ts - tss) * 1000000000)
+    tes = int(te)
+    ten = int((te - tes) * 1000000000)
     # Connect to GEA xml server
     gea = xmlClient.ServerProxy(gea_xml_server[site.split('_')[0]])
     # Get the list of archivers available
@@ -78,42 +89,44 @@ def geaExtractor(record, tsc, tec, site='gs'):
     print('Extracting', record)
     sys.stdout.write('\r' + 'Progress: 0.00%')
     try:
-        while tec > tw:
-            # Get a window of 5 minutes of data from GEA. For some reason
-            # umknown to me, you can only extract 15 min worth of data at a
-            # time
-            tss = (tw).timestamp()
-            tes = (tw + tq).timestamp()
+        # Start a while loop to extract data. The loop will run until the number
+        # of data points extracted is less than 10000
+        while data_points >= 10000:
+            # Get the data from the archiver. The archiver will extract data
+            # points between the timestamps ts and te, or until it extracts
+            # 10000 points, whatever happens first.
             geaRecord = gea.archiver.values(geaDict[archiver], [record],
-                                            int(tss),
-                                            int(tss - int(tss))*1000000000,
-                                            int(tes),
-                                            int(tes - int(tes))*1000000000,
-                                            10000,
+                                            tss,
+                                            tsn,
+                                            tes,
+                                            ten,
+                                            100000,
                                             0)
-            # Auxiliary array for the 15 min of data
-            # Check to see if the record value is a string, and create a numpy
-            # array with the proper type
+            # Check the amount of data points harvested
+            data_points = len(geaRecord[0]['values'])
+            # Define a new start to the time window to harvest
+            tss = geaRecord[0]['values'][-1]['secs']
+            tsn = geaRecord[0]['values'][-1]['nano']
+            ts = tss + tsn/1000000000
             timestamps = [val['secs'] + val['nano']/1000000000\
                             for val in geaRecord[0]['values']]
-
-            geaData['timestamp'] += timestamps
+            geaData['timestamp'] += timestamps[:-1]
+            # Check to see if the record value is a string, and create a numpy
+            # array with the proper type
             if not(geaRecord[0]['type']):
                 values = np.array([val['value'][0]
                                    for val in geaRecord[0]['values']],
                                   dtype='S32')
-                geaData['value'] = np.concatenate((geaData['value'], values))
+                geaData['value'] = np.concatenate((geaData['value'], values[:-1]))
             else:
                 values = [val['value']
                           if (len(val['value'])>1)
                           else val['value'][0]
                           for val in geaRecord[0]['values']]
-                geaData['value'] += values
-            # Advance time window
-            tw = tw + tq
+                geaData['value'] += values[:-1]
             # Calculate and display progress
-            timeSpan = (tw - tsc).total_seconds()
-            progress = round((timeSpan / timeTotal) * 100, 2)
+            timeSpan = 1 - (te - ts)/timeTotal
+            progress = round(timeSpan * 100, 2)
             sys.stdout.write('\r' + 'Progress: ' + str(progress) + '% ')
         sys.stdout.write('\r' + 'Progress: 100.00%\n')
         print('size of data array:', len(geaData['timestamp']))
